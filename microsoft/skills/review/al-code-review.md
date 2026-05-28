@@ -98,13 +98,13 @@ For every candidate the agent identifies in this pass:
    - `id` is a skill-defined slug prefixed with `agent:` (for example, `agent:missing-error-handling-on-http-call`).
    - `confidence` capped at `medium`.
    - `message` is non-empty and self-contained, describing both the issue and a concrete recommendation. A consumer rendering the finding has no knowledge-file footer to fall back on.
-   - `suggested-code` SHOULD be set when the fix is small and mechanical. Omit it when the appropriate fix depends on context the agent cannot determine.
+   - `suggested-code` MUST be set when the fix is small, local, and mechanical. If a mechanical-looking finding omits it, set `suggested-code-omission-reason` with the reason (for example, the fix spans non-contiguous code or requires choosing a real production value).
 
 Leaf-level agent findings (those with `references: []` inside a sub-skill's report) are rolled up into the super-skill's top-level `findings[]` like any other sub-skill finding — they keep their `from-sub-skill: <leaf-id>` attribution and are not rewritten. They are not subject to the "MUST validate against knowledge" step above, because each leaf has already validated within its own domain.
 
 ### Suggested-code guidance
 
-For both knowledge-backed findings rolled up from sub-skills and agent findings emitted in the self-review pass, populate `findings[].suggested-code` whenever a concrete code replacement is unambiguous from the diff context. The payload MUST be a literal replacement for the source lines covered by `location` (typically a single line, or the line range in `location.range`) — no diff markers, fences, or commentary. Examples of good candidates: deleting dead code after `exit`, replacing `Count() > 0` with `not IsEmpty()`, moving an inline `Label` declaration to a codeunit-level `var` block, fixing whitespace or keyword casing. Skip `suggested-code` when the fix requires choosing between multiple defensible alternatives or when the surrounding context the agent cannot see could change the answer.
+For both knowledge-backed findings rolled up from sub-skills and agent findings emitted in the self-review pass, populate `findings[].suggested-code` whenever a concrete code replacement is unambiguous from the diff context. This is a MUST for small, local, mechanical fixes. The payload MUST be a literal replacement for the source lines covered by `location` (typically a single line, or the line range in `location.range`) — no diff markers, fences, or commentary. Examples of good candidates: deleting dead code after `exit`, replacing `Count() > 0` with `not IsEmpty()`, moving an inline `Label` declaration to a codeunit-level `var` block, adding a missing property, replacing string-concatenated `Error`, changing an over-broad permission token, fixing whitespace or keyword casing. Skip `suggested-code` only when the fix requires choosing between multiple defensible alternatives, when the fix spans non-contiguous code, or when the surrounding context the agent cannot see could change the answer. If a mechanical-looking finding omits `suggested-code`, set `suggested-code-omission-reason`.
 
 Sub-skills MAY also emit `suggested-code` when their knowledge file unambiguously implies the replacement (the `.good.al` and `.bad.al` companion examples are useful here). The super-skill copies the field through unchanged.
 
@@ -313,3 +313,4 @@ The empty-corpus case — BCQuality's state until knowledge files land — rolls
   ]
 }
 ```
+

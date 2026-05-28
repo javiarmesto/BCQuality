@@ -95,7 +95,8 @@ Every action skill emits a single JSON document that conforms to this schema:
       ],
       "confidence": "high | medium | low",
       "from-sub-skill": "string",
-      "suggested-code": "string"
+      "suggested-code": "string",
+      "suggested-code-omission-reason": "string"
     }
   ],
   "suppressed": [
@@ -174,7 +175,13 @@ The first reference is the **primary** reference: the knowledge file the finding
 
 **`findings[].from-sub-skill`** — optional. Set only by super-skills. The `skill.id` of the sub-skill that produced the finding, or the literal string `"agent"` for an agent finding the super-skill produced from its own cross-cutting reasoning. Absent on findings emitted directly by a leaf skill — including agent findings the leaf emits within its own domain, which appear in the leaf's own report without this field.
 
-**`findings[].suggested-code`** — optional. A concrete code-replacement payload for the lines indicated by `location`. When present, the string MUST be a literal replacement for the source lines covered by `location.line` (or `location.range` if set) — i.e., what the file would contain after the fix, with no surrounding diff markers, fences, or commentary. Consumers MAY render it as a one-click suggestion in the delivery surface (for example, a GitHub ```` ```suggestion ```` block). Emit `suggested-code` only when the fix is small, mechanical, and unambiguous; omit it when the appropriate fix depends on context the skill cannot determine. The `suggested-code` payload supplements `message`; it does not replace the explanation in `message`.
+**`findings[].suggested-code`** — optional in the schema but **expected for mechanical findings**. It is a concrete code-replacement payload for the lines indicated by `location`. When present, the string MUST be a literal replacement for the source lines covered by `location.line` (or `location.range` if set) — i.e., what the file would contain after the fix, with no surrounding diff markers, fences, or commentary. Consumers MAY render it as a one-click suggestion in the delivery surface (for example, a GitHub ```` ```suggestion ```` block).
+
+Emit `suggested-code` whenever the fix is small, local, and mechanical: deleting unreachable code; replacing one expression (`Count() > 0` → `not IsEmpty()`); moving a local `Label` to object scope; adding a missing property such as `ToolTip`, `OptionCaption`, or `DataClassification`; replacing a string-concatenated `Error` with a Label-backed call; changing a permission token; or adding a missing `else`/guard branch whose replacement is unambiguous from the surrounding diff. When a `.good.al` companion exists and the diff context matches the `.bad.al` shape, prefer adapting the `.good.al` replacement into `suggested-code`.
+
+Omit `suggested-code` only when the appropriate fix depends on context the skill cannot determine, when multiple defensible replacements exist, or when the fix spans non-contiguous code. If a finding is mechanical-looking but `suggested-code` is omitted, set `findings[].suggested-code-omission-reason` to a short explanation (for example, `requires choosing a real event id` or `fix spans multiple non-contiguous locations`). The `suggested-code` payload supplements `message`; it does not replace the explanation in `message`.
+
+**`findings[].suggested-code-omission-reason`** — optional. Required when a finding is mechanical-looking but `suggested-code` is omitted. Short, human-readable reason explaining why no safe one-click replacement was emitted. Consumers MAY use this for telemetry or diagnostics; they do not have to render it in review comments.
 
 **`suppressed`** — MUST list every knowledge file that was discarded due to layer precedence or consumer configuration, whenever that file would otherwise have contributed to the worklist. Each entry contains:
 
@@ -267,3 +274,5 @@ Conforms to the DO output contract.
 ## How orchestrators consume output
 
 An orchestrator invokes an action skill with an input appropriate to the skill's declared `inputs`, receives the JSON output, and maps findings to its delivery surface (PR comments, build gates, IDE diagnostics). The orchestrator MUST NOT interpret skill-specific fields beyond the schema above. Skills that need richer semantics MUST encode them within the schema (for example, by adding structured `message` text) rather than extending the output shape.
+
+
