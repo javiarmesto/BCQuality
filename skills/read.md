@@ -80,8 +80,8 @@ The default consumption model is **additive**: an action skill sees files from e
 
 When two files give **directly contradictory normative guidance**, the conflict is resolved by layer precedence:
 
-1. `/custom/` wins over `/microsoft/` and `/community/`.
-2. `/microsoft/` wins over `/community/`.
+1. `/custom/` wins over `/community/` and `/microsoft/`.
+2. `/community/` wins over `/microsoft/`.
 
 A conflict exists when both of the following are true:
 

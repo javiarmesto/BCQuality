@@ -35,11 +35,11 @@ Discard files that are not applicable. Retain conditionally applicable files (an
 
 ## Worklist
 
-Narrow the relevant files to the subset that applies to the changes under review. For each relevant file, compute overlap against:
+Narrow the relevant files to the subset that applies to the changes under review. Exclude test codeunits, test libraries, test helper code, files under test/Test/Tests paths, and objects with `Subtype = Test`; test data is synthetic and does not ship to customers. For each relevant file, compute overlap against:
 
-- The changed AL object names and types — especially tables and tableextensions (for `DataClassification` on fields), codeunits that call `Error` or `Session.LogMessage`, codeunits performing outgoing HTTP requests with customer data, and objects reading or writing `IsolatedStorage`.
-- The changed procedures and triggers, weighted toward those that call `Error`, `Session.LogMessage`, `StrSubstNo`, `GetLastErrorText`, `HttpClient.Post`/`Get`, `IsolatedStorage.Set`/`SetEncrypted`/`Get`, or `PrivacyNotice.GetPrivacyNoticeApprovalState`.
-- Tokens extracted from the diff that relate to privacy (`DataClassification`, `CustomerContent`, `EndUserIdentifiableInformation`, `SystemMetadata`, `ToBeClassified`, `PrivacyNotice`, `GetLastErrorText`, `TelemetryScope`).
+- The changed AL object names and types — especially tables and tableextensions (for `DataClassification` on fields), codeunits that call `Error`, `Session.LogMessage`, or `FeatureTelemetry`, codeunits performing outgoing HTTP requests with customer data, migration codeunits, and objects reading or writing `IsolatedStorage`.
+- The changed procedures and triggers, weighted toward those that call `Error`, `Session.LogMessage`, `StrSubstNo`, `GetLastErrorText`, `FeatureTelemetry.LogUsage`/`LogUptake`/`LogError`, `HttpClient.Post`/`Get`, `IsolatedStorage.Set`/`SetEncrypted`/`Get`, or `PrivacyNotice.GetPrivacyNoticeApprovalState`.
+- Tokens extracted from the diff that relate to privacy (`DataClassification`, `CustomerContent`, `EndUserIdentifiableInformation`, `EndUserPseudonymousIdentifiers`, `SystemMetadata`, `ToBeClassified`, `PrivacyNotice`, `GetLastErrorText`, `TelemetryScope`, `FeatureTelemetry`, `CustomDimensions`, `LogUsage`, `LogUptake`, `LogError`, `HybridSL`, `HybridGP`, `HybridBC`).
 
 A file enters the candidate worklist when its `keywords` intersect the extracted tokens or its topic (derived from filename and Description) matches a changed object type.
 
@@ -60,6 +60,12 @@ Set `confidence` to:
 - `high` when the detection is based on an unambiguous pattern match (identifier, syntax, object type).
 - `medium` when detection relies on heuristics or when any frontmatter dimension was `unknown`.
 - `low` when the finding is an advisory derived only from applicability.
+
+After evaluating each worklist entry, also consider whether the diff exhibits a privacy defect the agent recognises from its general AL knowledge that no knowledge file in the worklist covers. Such candidates are agent findings within this skill's domain — emit them with `references: []`, an `id` slug prefixed with `agent:`, `confidence` capped at `medium`, and a `message` that is self-contained (describing both the issue and a concrete recommendation, since there is no knowledge-file footer for the consumer to fall back on). The scope is strictly privacy; defects outside this domain belong to other leaves and MUST NOT be emitted here. Before emitting, check the worklist for a knowledge file that matches the candidate — if one exists, upgrade the candidate to a knowledge-backed finding instead. See `skills/do.md` for the full contract.
+
+For every emitted finding, decide whether the fix is mechanical. A fix is mechanical when it is small, local, and unambiguous from the diff context (for example: delete unreachable lines; replace `Count() > 0` with `not IsEmpty()`; move a local `Label` to object scope; add a missing `ToolTip`, `OptionCaption`, or `DataClassification`; replace a string-concatenated `Error` with a Label-backed call; change an over-broad permission token; or add an obvious `else`/guard branch). For mechanical findings, emit `findings[].suggested-code` with the literal replacement for the source lines indicated by `location`. The payload must be a verbatim replacement — no diff markers, no fences, no commentary — that the consumer can render as a one-click suggestion. When a `.good.al` companion exists and the diff context matches the `.bad.al` shape, adapt the `.good.al` replacement into `suggested-code`.
+
+Omit `suggested-code` only when the appropriate fix depends on context the skill cannot determine, when multiple defensible replacements exist, or when the fix spans non-contiguous code. If a finding is mechanical-looking but you omit `suggested-code`, set `findings[].suggested-code-omission-reason` to a short explanation. See `skills/do.md` for the full contract.
 
 Outcome selection:
 
@@ -100,3 +106,4 @@ Output conforms to the DO output contract. A populated example:
   "suppressed": []
 }
 ```
+

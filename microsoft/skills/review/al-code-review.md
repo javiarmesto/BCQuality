@@ -23,7 +23,7 @@ sub-skills:
 
 Reviews AL source changes by composing the leaf AL review skills. This is the canonical reference implementation of a **super-skill** — skill authors writing composed reviews should copy its structure.
 
-`al-code-review` does not evaluate knowledge files directly. It invokes each of its sub-skills against the same task input, collects their findings-reports, and returns a rolled-up findings-report.
+`al-code-review` does not evaluate knowledge files directly. It invokes each of its sub-skills against the same task input, collects their findings-reports, and then performs its own **self-review pass** over the diff using the agent's built-in BC and AL knowledge. BCQuality knowledge is an additive layer: anything the sub-skills found is cited from BCQuality, and anything the agent finds on its own is validated against BCQuality (cited if matched, suppressed if contradicted, surfaced as an **agent finding** otherwise). The result is a single rolled-up findings-report that mixes knowledge-backed and agent findings, each clearly tagged via `from-sub-skill`.
 
 An orchestrator invokes this skill with either a `pr-diff` (the standard PR-review entry point) or a `file-path` (single-file review). The skill produces a single JSON document conforming to the DO output contract, extended with `sub-results` and — when applicable — `skipped-sub-skills`.
 
@@ -60,14 +60,57 @@ The worklist is the list of sub-skills judged relevant by the previous step. Eve
 
 ## Action
 
-For each sub-skill in the worklist:
+### Execution discipline (mandatory)
+
+The Action step is a sequence of **discrete iterations**, not one combined generation. The contract requires the super-skill to invoke each sub-skill in turn and then perform a self-review pass. Concretely this means:
+
+- Treat each sub-skill in the worklist as its own pass: read the sub-skill's instructions, apply its Source → Relevance → Worklist → Action steps to the orchestrator-supplied inputs, and produce that sub-skill's complete findings-report before moving on.
+- Do not collapse multiple sub-skills into one shared reasoning step. Each sub-skill has a distinct knowledge subset and a distinct evaluation procedure; sharing one rolled-up scan dilutes per-skill attention and causes leaves to silently underreport (this has been observed in production: leaf skills returned empty `findings[]` while their standalone runs against the same diff produced multiple matches).
+- The agent self-review pass is its own final iteration. Begin it only after every sub-skill in the worklist has completed and its sub-result is recorded.
+- Sub-skills are independent: re-walking the diff once per sub-skill is correct and expected. The output schema accommodates this — `sub-results` carries one entry per sub-skill, each a complete findings-report.
+
+### Roll up sub-skill findings
+
+For each sub-skill in the worklist, executed one at a time per the discipline above:
 
 1. Invoke the sub-skill with the orchestrator's inputs, passing only the subset each sub-skill declares in its `inputs`.
 2. Capture the sub-skill's complete findings-report verbatim and append it to `sub-results`.
 3. If the sub-skill's `outcome` is `failed`, stop here for this sub-skill: its findings are not reliable per the DO contract and MUST NOT be copied into the super-skill's top-level `findings[]` or counted in `summary.counts`.
 4. Otherwise, append each entry from the sub-skill's `findings[]` to the super-skill's top-level `findings[]`, setting `from-sub-skill` to the sub-skill's `skill.id`. For non-citation findings (those whose `id` is a skill-defined slug rather than a reference path), prefix `id` with `<from-sub-skill>:` to prevent collisions across sub-skills. Other finding fields are preserved.
 
-Aggregate `summary.counts` and `summary.coverage` as the sums across invoked sub-skills whose `outcome` is not `failed`.
+### Agent self-review pass
+
+Each leaf sub-skill emits both knowledge-backed findings and, per its own contract, agent findings within its own domain. After every sub-skill has produced its sub-result, perform a super-skill self-review pass against the same task input. The goal of this pass is to surface defects the agent recognises on its own that **no single leaf could have surfaced** because they cross domain boundaries — architecture-level issues that touch performance and reliability at once, error-handling gaps that span security and UX, resource-lifecycle patterns that affect both correctness and performance, and similar cross-cutting concerns. BCQuality is an **additive** knowledge layer: it augments the agent's review judgement, it does not replace it.
+
+This pass is mandatory on real-size PRs. An empty agent-findings list at the super-skill level is acceptable only when the diff is small enough that nothing cross-cutting plausibly applies (in practice: PRs of ≤2 files with ≤30 changed lines). For larger diffs, the fact that leaves emitted findings does not exempt the super-skill — the leaves handle within-domain reasoning, the super-skill handles cross-domain reasoning, and a real-size PR with no cross-cutting candidates is rare.
+
+Frame the pass by cross-cutting concerns — architecture, error handling, resource lifecycle — and by the seams between leaf domains. Do not duplicate domain-specific reasoning that belongs in a leaf: a security-only concern is the security leaf's responsibility, not the super-skill's. The super-skill pass adds value where no individual leaf has the right scope.
+
+For every candidate the agent identifies in this pass:
+
+1. **Validate against BCQuality knowledge.** Check the candidate against the knowledge files the sub-skills have already loaded for this task (visible via their `references` and `suppressed` lists in `sub-results`).
+   - If a BCQuality knowledge file matches the candidate, upgrade it to a knowledge-backed finding: cite the file in `references`, set `id` to the file's path, set `from-sub-skill` to the sub-skill that owns that knowledge domain, and merge with or deduplicate against any sub-skill finding that already covers the same concern at the same location.
+   - If a BCQuality knowledge file **explicitly contradicts** the candidate (its `## Best Practice` or `## Anti Pattern` says the opposite of what the agent flagged), suppress the candidate and do not surface it.
+   - Otherwise the candidate has no BCQuality coverage; emit it as a super-skill agent finding.
+2. **Emit agent finding.** Per DO's *Agent findings* rules:
+   - `from-sub-skill: "agent"` (the super-skill itself produced it)
+   - `references: []`
+   - `id` is a skill-defined slug prefixed with `agent:` (for example, `agent:missing-error-handling-on-http-call`).
+   - `confidence` capped at `medium`.
+   - `message` is non-empty and self-contained, describing both the issue and a concrete recommendation. A consumer rendering the finding has no knowledge-file footer to fall back on.
+   - `suggested-code` MUST be set when the fix is small, local, and mechanical. If a mechanical-looking finding omits it, set `suggested-code-omission-reason` with the reason (for example, the fix spans non-contiguous code or requires choosing a real production value).
+
+Leaf-level agent findings (those with `references: []` inside a sub-skill's report) are rolled up into the super-skill's top-level `findings[]` like any other sub-skill finding — they keep their `from-sub-skill: <leaf-id>` attribution and are not rewritten. They are not subject to the "MUST validate against knowledge" step above, because each leaf has already validated within its own domain.
+
+### Suggested-code guidance
+
+For both knowledge-backed findings rolled up from sub-skills and agent findings emitted in the self-review pass, populate `findings[].suggested-code` whenever a concrete code replacement is unambiguous from the diff context. This is a MUST for small, local, mechanical fixes. The payload MUST be a literal replacement for the source lines covered by `location` (typically a single line, or the line range in `location.range`) — no diff markers, fences, or commentary. Examples of good candidates: deleting dead code after `exit`, replacing `Count() > 0` with `not IsEmpty()`, moving an inline `Label` declaration to a codeunit-level `var` block, adding a missing property, replacing string-concatenated `Error`, changing an over-broad permission token, fixing whitespace or keyword casing. Skip `suggested-code` only when the fix requires choosing between multiple defensible alternatives, when the fix spans non-contiguous code, or when the surrounding context the agent cannot see could change the answer. If a mechanical-looking finding omits `suggested-code`, set `suggested-code-omission-reason`.
+
+Sub-skills MAY also emit `suggested-code` when their knowledge file unambiguously implies the replacement (the `.good.al` and `.bad.al` companion examples are useful here). The super-skill copies the field through unchanged.
+
+### Summary and rollup
+
+Aggregate `summary.counts` and `summary.coverage` as the sums across invoked sub-skills whose `outcome` is not `failed`. Agent findings emitted by the super-skill itself contribute to `summary.counts` but not to `summary.coverage` (coverage is a sub-skill worklist metric and is undefined for self-review).
 
 `suppressed[]` at the super-skill level remains empty. Knowledge-file-level suppression is reported by each sub-skill within its own entry in `sub-results`.
 
@@ -82,7 +125,7 @@ Output conforms to the DO output contract, extended with `sub-results` and `skip
   "skill": { "id": "al-code-review", "version": 1 },
   "outcome": "completed",
   "summary": {
-    "counts": { "blocker": 1, "major": 1, "minor": 2, "info": 0 },
+    "counts": { "blocker": 1, "major": 1, "minor": 3, "info": 0 },
     "coverage": { "worklist-size": 4, "items-evaluated": 4 }
   },
   "findings": [
@@ -143,6 +186,19 @@ Output conforms to the DO output contract, extended with `sub-results` and `skip
       ],
       "confidence": "medium",
       "from-sub-skill": "al-security-review"
+    },
+    {
+      "id": "agent:missing-error-handling-on-http-client",
+      "severity": "minor",
+      "message": "HttpClient.Send is called without inspecting the response status or wrapping the call in a TryFunction. Network or remote-server failures will surface as runtime errors to the user. Recommendation: branch on the HttpResponseMessage.IsSuccessStatusCode and either retry, surface a controlled error, or fall back, depending on the integration's contract.",
+      "location": {
+        "file": "src/Integration/ApiClient.Codeunit.al",
+        "line": 60,
+        "range": { "start-line": 60, "end-line": 64 }
+      },
+      "references": [],
+      "confidence": "medium",
+      "from-sub-skill": "agent"
     }
   ],
   "suppressed": [],
@@ -257,3 +313,4 @@ The empty-corpus case — BCQuality's state until knowledge files land — rolls
   ]
 }
 ```
+
