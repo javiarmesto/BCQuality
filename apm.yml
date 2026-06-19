@@ -1,0 +1,22 @@
+name: bcquality
+version: 0.1.0
+description: BC quality knowledge base and skills, distributed as one skill bundle
+author: Microsoft
+license: MIT
+
+# HYBRID package: a root SKILL.md (the initialization entry-point) alongside
+# this apm.yml. APM installs the whole directory tree as a single skill bundle
+# under <target>/skills/bcquality/, preserving internal structure so that
+# skills/entry.md, the layer folders (microsoft/community/custom), and every
+# skill-to-knowledge relative reference keep working after install.
+#
+# The knowledge corpus (the bulk of the repo) ships as bundle assets: APM has
+# no "knowledge" primitive, so the skill-bundle layout is what makes BCQuality
+# distributable without losing its content or its 3-layer precedence model.
+#
+# No dependencies: the bundle is self-contained by design.
+dependencies:
+  apm: []
+  mcp: []
+
+scripts: {}
