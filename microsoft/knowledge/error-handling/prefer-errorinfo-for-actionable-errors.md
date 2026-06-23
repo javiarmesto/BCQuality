@@ -1,5 +1,5 @@
 ---
-bc-version: [23..28]
+bc-version: [23..]
 domain: error-handling
 keywords: [errorinfo, actionable-errors, fix-it, show-it, addaction, addnavigationaction, error-dialog]
 technologies: [al]
