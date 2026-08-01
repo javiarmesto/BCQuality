@@ -63,6 +63,12 @@ def main() -> int:
                 f"{missing_tokens}"
             )
 
+    windows_command = str(hook["windows"])
+    if "[ordered]@{" not in windows_command or "ConvertTo-Json" not in windows_command:
+        fail("Windows hook must build the payload as PowerShell objects")
+    if "BCQUALITY_CAPABILITY={" in windows_command:
+        fail("Windows hook must not embed raw JSON inside the -Command argument")
+
     completed = subprocess.run(
         hook["command"],
         cwd=root,
