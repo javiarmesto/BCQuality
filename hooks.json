@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "printf '%s\\n' '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"BCQUALITY_CAPABILITY={\\\"schemaVersion\\\":1,\\\"provider\\\":\\\"bcquality-plugin\\\",\\\"plugin\\\":\\\"bcquality\\\",\\\"pluginVersion\\\":\\\"0.1.0\\\",\\\"capabilities\\\":[\\\"bcquality-al-review\\\"],\\\"status\\\":\\\"active\\\"}\"}}'",
+        "windows": "powershell -NoProfile -NonInteractive -Command \"Write-Output '{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"SessionStart\\\",\\\"additionalContext\\\":\\\"BCQUALITY_CAPABILITY={\\\\\\\"schemaVersion\\\\\\\":1,\\\\\\\"provider\\\\\\\":\\\\\\\"bcquality-plugin\\\\\\\",\\\\\\\"plugin\\\\\\\":\\\\\\\"bcquality\\\\\\\",\\\\\\\"pluginVersion\\\\\\\":\\\\\\\"0.1.0\\\\\\\",\\\\\\\"capabilities\\\\\\\":[\\\\\\\"bcquality-al-review\\\\\\\"],\\\\\\\"status\\\\\\\":\\\\\\\"active\\\\\\\"}\\\"}}'\"",
+        "timeoutSec": 5
+      }
+    ]
+  }
+}
