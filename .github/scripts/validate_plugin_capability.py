@@ -44,10 +44,24 @@ def main() -> int:
     if int(hook.get("timeoutSec", 0)) > 5:
         fail("SessionStart timeout must not exceed five seconds")
 
-    command_text = " ".join(str(hook.get(key, "")) for key in ("command", "windows"))
     forbidden = ("curl ", "wget ", "invoke-webrequest", "http://", "https://")
-    if any(token in command_text.lower() for token in forbidden):
-        fail("SessionStart must not use the network")
+    contract_tokens = (
+        EXPECTED_PROVIDER,
+        plugin["name"],
+        plugin["version"],
+        EXPECTED_SKILL,
+        "active",
+    )
+    for command_name in ("command", "windows"):
+        command_text = str(hook.get(command_name, ""))
+        if any(token in command_text.lower() for token in forbidden):
+            fail(f"SessionStart {command_name} must not use the network")
+        missing_tokens = [token for token in contract_tokens if token not in command_text]
+        if missing_tokens:
+            fail(
+                f"SessionStart {command_name} does not carry the complete contract: "
+                f"{missing_tokens}"
+            )
 
     completed = subprocess.run(
         hook["command"],
