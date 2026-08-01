@@ -17,5 +17,6 @@
   ],
   "skills": [
     "./skills/bcquality-al-review/"
-  ]
+  ],
+  "hooks": "./hooks.json"
 }
