@@ -68,6 +68,8 @@ def main() -> int:
         fail("Windows hook must build the payload as PowerShell objects")
     if "BCQUALITY_CAPABILITY={" in windows_command:
         fail("Windows hook must not embed raw JSON inside the -Command argument")
+    if "$" in windows_command:
+        fail("Windows hook must not contain variables expanded by the outer shell")
 
     completed = subprocess.run(
         hook["command"],
