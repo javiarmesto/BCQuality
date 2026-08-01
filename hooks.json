@@ -5,7 +5,7 @@
       {
         "type": "command",
         "command": "printf '%s\\n' '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"BCQUALITY_CAPABILITY={\\\"schemaVersion\\\":1,\\\"provider\\\":\\\"bcquality-plugin\\\",\\\"plugin\\\":\\\"bcquality\\\",\\\"pluginVersion\\\":\\\"0.1.0\\\",\\\"capabilities\\\":[\\\"bcquality-al-review\\\"],\\\"status\\\":\\\"active\\\"}\"}}'",
-        "windows": "powershell -NoProfile -NonInteractive -Command \"$capability = [ordered]@{ schemaVersion = 1; provider = 'bcquality-plugin'; plugin = 'bcquality'; pluginVersion = '0.1.0'; capabilities = @('bcquality-al-review'); status = 'active' }; $context = 'BCQUALITY_CAPABILITY=' + ($capability | ConvertTo-Json -Compress); $envelope = @{ hookSpecificOutput = @{ hookEventName = 'SessionStart'; additionalContext = $context } }; $envelope | ConvertTo-Json -Depth 5 -Compress\"",
+        "windows": "powershell -NoProfile -NonInteractive -Command \"@{ hookSpecificOutput = @{ hookEventName = 'SessionStart'; additionalContext = 'BCQUALITY_CAPABILITY=' + (([ordered]@{ schemaVersion = 1; provider = 'bcquality-plugin'; plugin = 'bcquality'; pluginVersion = '0.1.0'; capabilities = @('bcquality-al-review'); status = 'active' }) | ConvertTo-Json -Compress) } } | ConvertTo-Json -Depth 5 -Compress\"",
         "timeoutSec": 5
       }
     ]
