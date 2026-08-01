@@ -14,6 +14,18 @@ BCQuality itself is orchestrator-agnostic content: knowledge files plus routing 
 action skills. This bridge is the thin consumer glue that lets a plugin host run that
 content without hardcoding BCQuality's layout.
 
+## Invocation contract
+
+When a host loads or reads this `SKILL.md` for the current request, the skill is
+already invoked. Start at **Steps** and execute the protocol directly. Do not try to
+invoke `bcquality-al-review` again through another skill tool, search a second skill
+catalog, or report the skill as unavailable because a secondary invocation mechanism
+does not list it.
+
+When reporting process transparency, treat the host's successful load of this file as
+`bcquality-al-review` being used. Report a failure only when this file or a required
+protocol file cannot be read or executed.
+
 ## When to use
 
 - Reviewing an AL pull request or an uncommitted working-tree diff.
@@ -32,11 +44,17 @@ plugin-root environment variable, prefer it.
 
 ## Steps
 
-1. **Refresh the knowledge index (best effort).** If `pwsh` is available, run
-   `pwsh PLUGIN_ROOT/tools/Build-KnowledgeIndex.ps1` from `PLUGIN_ROOT` to (re)generate
-   `PLUGIN_ROOT/knowledge-index.json` over the installed tree. This is a discovery
-   accelerator only — if `pwsh` is missing or the build fails, continue; the review
-   skills fall back to path-based discovery.
+1. **Refresh the knowledge index (best effort).** From `PLUGIN_ROOT`, use the
+   first available PowerShell host:
+
+   - PowerShell 7+: `pwsh ./tools/Build-KnowledgeIndex.ps1`
+   - Windows PowerShell: `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File .\\tools\\Build-KnowledgeIndex.ps1`
+
+   This regenerates `PLUGIN_ROOT/knowledge-index.json` over the installed tree. The
+   index is a discovery accelerator only. If neither host is available, the plugin
+   directory is read-only, or the build fails, state the actual failure and continue
+   with path-based discovery. Do not infer success from terminal history alone; verify
+   that `knowledge-index.json` exists before reporting a successful refresh.
 
 2. **Run Entry.** Read `PLUGIN_ROOT/skills/entry.md` and execute it against a
    task context describing the review:
