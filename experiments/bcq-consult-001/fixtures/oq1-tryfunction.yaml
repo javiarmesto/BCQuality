@@ -1,0 +1,52 @@
+id: oq1-tryfunction-transaction-isolation
+purpose: field-validation fixture for BCQ-CONSULT-001
+
+expected-capability: bcquality-al-consult
+
+task-context:
+  goal: "Assess an AL technical pattern"
+  inputs-available:
+    - technical-question
+  technologies:
+    - al
+  bc-version: 28
+  countries:
+    - w1
+  application-area:
+    - all
+  enabled-layers:
+    - microsoft
+    - community
+    - custom
+  disabled-skills: []
+
+technical-question:
+  question: >-
+    Can a TryFunction-wrapped audit insert provide a non-blocking failure path
+    when CommitIsSuppressed = true without altering the caller transaction?
+  candidate-pattern:
+    - "[TryFunction] around a SPA Audit Entry Record.Insert"
+    - "capture the Boolean TryFunction result"
+    - "Session.LogMessage on failure"
+    - "no subscriber-owned Commit"
+  constraints:
+    - "audit write failure must not fail the posting operation"
+    - "caller transaction must not be committed or rolled back by the subscriber"
+    - "no subscriber-owned Commit()"
+    - "failure must not be silently swallowed"
+  evidence-needed:
+    - quality-suitability
+    - known-error-handling-risks
+    - known-transaction-pattern-risks
+
+expected-behavior:
+  must-cite-real-knowledge: true
+  must-not-claim:
+    - "runtime transaction isolation is proven solely because one Insert is used"
+    - "TryFunction is a rollback boundary"
+  acceptable-outcomes:
+    - conditionally-supported
+    - insufficient-evidence
+  external-evidence-boundary:
+    - "official runtime semantics may require microsoftdocs/mcp"
+    - "actual isolation behavior may require a runtime test"
