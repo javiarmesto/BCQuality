@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "bcquality://experimental/consult-report.schema.json",
+  "title": "BCQuality Consult Report (experimental)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "skill",
+    "outcome",
+    "assessment",
+    "conditions",
+    "risks",
+    "rejected-patterns",
+    "unproven",
+    "references",
+    "confidence",
+    "routing"
+  ],
+  "properties": {
+    "skill": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version"],
+      "properties": {
+        "id": { "const": "al-technical-consult" },
+        "version": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "outcome": {
+      "enum": [
+        "supported",
+        "conditionally-supported",
+        "unsupported",
+        "insufficient-evidence",
+        "failed"
+      ]
+    },
+    "assessment": { "type": "string", "minLength": 1 },
+    "conditions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "risks": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "rejected-patterns": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "unproven": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "sha": { "type": "string", "minLength": 7 }
+        }
+      }
+    },
+    "confidence": { "enum": ["high", "medium", "low"] },
+    "routing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entry-outcome", "skills-run"],
+      "properties": {
+        "entry-outcome": { "enum": ["routed", "no-match", "failed"] },
+        "skills-run": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "outcome": { "const": "insufficient-evidence" } }
+      },
+      "then": {
+        "properties": { "unproven": { "minItems": 1 } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "outcome": { "enum": ["supported", "conditionally-supported", "unsupported"] } }
+      },
+      "then": {
+        "properties": { "references": { "minItems": 1 } }
+      }
+    }
+  ]
+}
