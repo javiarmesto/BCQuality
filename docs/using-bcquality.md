@@ -12,8 +12,21 @@ and rendering; BCQuality does not install a BC extension or an agent.
 | Path | What to do |
 | --- | --- |
 | Read the knowledge yourself | Browse [knowledge by domain](#knowledge-by-domain), or search the repository for an AL concept. Read the article and its samples. No installation required. |
-| Use a supplied skill | Follow the [plugin quick start](../README.md#quick-start). The currently exposed skill, `al-code-review`, performs reviews and returns findings. |
+| Use a supplied skill | Follow the [plugin quick start](../README.md#quick-start). This fork exposes `al-code-review` for findings and `al-knowledge` for cited guidance. |
 | Use your own agent or workflow | Supply selected articles as context, as described below, or use the [integration bootstrap](agent-consumption.md#try-a-minimal-integration) to execute BCQuality action skills without the plugin. |
+
+### Knowledge consultation in this fork
+
+The `al-knowledge` plugin skill answers a focused development question from
+articles it actually read, returning a `knowledge-response` with exact paths.
+Ask, for example, "Use `al-knowledge` to explain when `SetLoadFields` is useful
+for AL on BC 29; cite your BCQuality articles; do not review code." It requires
+no app folder. It follows the same thin adapter → Entry → layered action skill
+sequence as `al-code-review` and does not turn advice into review findings.
+
+The [ALDC integration diagrams](aldc-integration/README.md) distinguish
+ALDC's existing multiroot design read path from this fork's proposed plugin
+knowledge path. Installing this fork does not automatically update ALDC.
 
 ### Read and reuse an article
 
@@ -57,7 +70,7 @@ integration protocol. The remaining sections describe the review workflow.
 The [quick start](../README.md#quick-start) documents GitHub Copilot CLI. Use a
 current CLI release with plugin support and sign in to an account allowed to
 use it. In an interactive CLI session, `/skills list` should include
-`al-code-review`; in the terminal, `copilot plugin list` should include
+`al-code-review` and `al-knowledge`; in the terminal, `copilot plugin list` should include
 `bcquality`.
 
 Do not assume a CLI installation also installs the plugin into VS Code,

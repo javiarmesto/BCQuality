@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="Dredd BCQuality access infographic">
+ <rect width="1600" height="900" fill="#f8f7f3"/>
+ <defs><pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M 32 0 L 0 0 0 32" fill="none" stroke="#dfe2e5" stroke-width="1"/></pattern></defs>
+ <rect width="1600" height="900" fill="url(#grid)" opacity=".58"/>
+ <rect x="72" y="65" width="1456" height="8" fill="#ed6c32"/>
+ <text x="75" y="133" font-family="Arial, sans-serif" font-size="21" font-weight="700" fill="#e35a29">ALDC / BCQUALITY     •     AGENT ACCESS MAP</text>
+ <text x="72" y="208" font-family="Arial, sans-serif" font-size="58" font-weight="700" fill="#202a36">Dredd</text>
+ <text x="74" y="264" font-family="Arial, sans-serif" font-size="28" font-weight="400" fill="#566575">On-demand audit</text>
+ <rect x="72" y="310" width="700" height="340" rx="20" fill="#fff" stroke="#d6dce2" stroke-width="2"/>
+ <rect x="72" y="310" width="700" height="12" rx="6" fill="#ec6c31"/>
+ <text x="112" y="378" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#e35a29">PLUGIN PATH</text>
+ <text x="112" y="435" font-family="Arial, sans-serif" font-size="29" font-weight="700" fill="#202a36">CURRENT: al-code-review</text>
+ <text x="112" y="505" font-family="Arial, sans-serif" font-size="23" font-weight="400" fill="#344354">Review scoped file batches</text>
+ <text x="112" y="582" font-family="Arial, sans-serif" font-size="19" font-weight="400" fill="#5f6c7a">Plugin root → Entry → action skill</text>
+ <rect x="828" y="310" width="700" height="340" rx="20" fill="#fff" stroke="#d6dce2" stroke-width="2"/>
+ <rect x="828" y="310" width="700" height="12" rx="6" fill="#8996a3"/>
+ <text x="868" y="378" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#596778">EXTERNAL MULTIROOT PATH</text>
+ <text x="868" y="435" font-family="Arial, sans-serif" font-size="29" font-weight="700" fill="#202a36">CURRENT: Entry multiroot</text>
+ <text x="868" y="505" font-family="Arial, sans-serif" font-size="23" font-weight="400" fill="#344354">Route each batch through Entry</text>
+ <text x="868" y="582" font-family="Arial, sans-serif" font-size="19" font-weight="400" fill="#5f6c7a">Configured external corpus; own revision</text>
+ <rect x="72" y="690" width="1456" height="132" rx="18" fill="#273340"/>
+ <text x="110" y="738" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#f49965">OUTPUT / EVIDENCE</text>
+ <text x="110" y="780" font-family="Arial, sans-serif" font-size="26" font-weight="700" fill="#fff">Advisory audit + cited findings</text>
+ <text x="110" y="807" font-family="Arial, sans-serif" font-size="17" font-weight="400" fill="#cbd5de">Keep native checks for uncovered domains</text>
+ <text x="1525" y="862" text-anchor="end" font-family="monospace" font-size="17" fill="#586674">ALDC × BCQuality · dredd</text>
+ </svg>

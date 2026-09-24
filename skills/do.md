@@ -62,12 +62,16 @@ application-area: [all]
 `bc-version`, `technologies`, `countries`, `application-area` are optional filters that let an orchestrator pre-select applicable skills for a task. They follow the same semantics as in READ.
 
 `inputs` is a list of abstract input types the skill **accepts**. Standard values:
-`pr-diff`, `object-list`, `file-path`, `folder-path`, `repository`, and
-`telemetry-query`. Semantics are any-of: the orchestrator supplies whichever
+`pr-diff`, `object-list`, `file-path`, `folder-path`, `repository`,
+`telemetry-query`, and `knowledge-query` (a question without source-code scope).
+Semantics are any-of: the orchestrator supplies whichever
 listed input types it has, and the skill is invoked with a non-empty subset of
 its declared `inputs`. A skill that cannot proceed with the supplied subset
 MUST return `outcome: "not-applicable"`. `outputs` is always a single-element
-list naming the output kind; today only `findings-report` is defined.
+list naming the output kind; `findings-report` covers reviews and
+`knowledge-response` covers knowledge consultation. The two output kinds must
+not be conflated. `knowledge-query` is a bound input value: its exact question
+travels to a dispatched skill, while Entry's `goal` supports routing.
 
 `file-path` is one file. `folder-path` is a directory whose recursively
 contained files form the complete current-state input, such as a Business
@@ -104,7 +108,9 @@ Every action skill MUST contain these five sections, in order:
 
 ## Output contract
 
-Every action skill emits a single JSON document that conforms to this schema:
+Every action skill emits a single JSON document conforming to its declared
+output kind. `knowledge-response` is defined below; the following review
+contract applies only to `outputs: [findings-report]`:
 
 The machine-readable structural schema is
 [`schemas/findings-report.schema.json`](../schemas/findings-report.schema.json).
@@ -335,6 +341,30 @@ Severity taxonomy:
 - `minor` — quality concern; worth flagging but not a gate.
 - `info` — observation or context; not actionable on its own.
 
+## Knowledge-response contract
+
+An action skill declaring `outputs: [knowledge-response]` emits one strict JSON
+object conforming to [`schemas/knowledge-response.schema.json`](../schemas/knowledge-response.schema.json).
+This output represents cited guidance, never a finding, severity, code location,
+or code-generation artifact. The `question` is the exact bound
+`knowledge-query`; `answer` is readable guidance and identifies the exact
+article paths used. `references[]` contains only paths to articles whose full
+bodies were opened in this run. An optional `sha` is an observed commit, not
+an expected pin. A conditional reference lists each unknown applicability
+dimension in `unknown[]`; fully applicable references use `applicable` with an
+empty `unknown[]`. READ defines matching and conflict precedence. Record
+displaced articles in `suppressed[]` without citing them as supporting guidance.
+
+`completed` requires a useful answer and at least one verified reference.
+`no-knowledge` means no applicable article answers the question; `answer`
+may explain the gap but `references` stays empty. `partial` records the reason
+and cites only articles actually read; `failed` records the reason with no
+references. Never fabricate an article path, infer a finding from article
+applicability, or report advice without an applicable article under the
+BCQuality name. A consumer MUST validate the schema and confirm every cited
+path exists in its live corpus and was read in full before accepting a result.
+If citation integrity cannot be verified, return `failed` with no citations.
+
 ## Composition (super-skills)
 
 A **super-skill** is an action skill whose frontmatter declares a non-empty `sub-skills: [...]`. A super-skill does not evaluate knowledge files directly; it invokes other action skills and composes their output.
@@ -441,4 +471,9 @@ Conforms to the DO output contract.
 
 ## How orchestrators consume output
 
-An orchestrator invokes an action skill with an input appropriate to the skill's declared `inputs`, receives the JSON output, and maps findings to its delivery surface (PR comments, build gates, IDE diagnostics). The orchestrator MUST NOT interpret skill-specific fields beyond the schema above. Skills that need richer semantics MUST encode them within the schema (for example, by adding structured `message` text) rather than extending the output shape.
+An orchestrator invokes an action skill with an input appropriate to its declared
+`inputs` and validates the JSON against its declared output schema. It can map
+review findings to PR comments or diagnostics and display a knowledge response
+as cited guidance. It MUST NOT treat guidance as findings or apply a review gate
+to a knowledge response. Skills needing richer semantics must change a shared
+contract deliberately instead of adding private fields to an output.
