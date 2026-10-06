@@ -9,7 +9,7 @@
       "name": "bcquality",
       "source": "./",
       "description": "Business Central AL quality knowledge base with review and knowledge consultation adapters backed by BCQuality's Entry protocol.",
-      "version": "0.3.0-knowledge-preview.1",
+      "version": "0.3.0-knowledge-preview.2",
       "skills": [
         "./skills/"
       ]

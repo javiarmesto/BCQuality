@@ -28,3 +28,10 @@ output policy belong to Entry, READ, DO, and the dispatched action skill.
    dispatch, or turn an explanation into a finding.
 5. Return the action skill's `knowledge-response` unchanged, or Entry's
    `no-match` / `failed` dispatch record unchanged.
+
+Where the host has no tool to invoke a skill and skills are instruction files the
+agent reads (for example VS Code Copilot), invoking this skill means executing
+steps 1–5 inline in the caller's own context. The `knowledge-response` the
+dispatched action skill produces there is the response to return: producing it
+that way is the protocol, not a fabrication. Lacking an invocation tool is never
+a reason to skip this skill or to answer without its response.

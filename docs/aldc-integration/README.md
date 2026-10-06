@@ -2,7 +2,7 @@
 
 These diagrams describe the ALDC agent contracts as consulted while preparing
 this fork. This branch identifies itself as plugin version
-`0.3.0-knowledge-preview.1`; it has not been released. Limited local host tests
+`0.3.0-knowledge-preview.2`; it has not been released. Limited local host tests
 are recorded in [preview validation](../knowledge-preview-validation.md);
 they do not establish full host conformance or ALDC adoption.
 They document **current** review access, the **current** multiroot

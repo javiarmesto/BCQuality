@@ -49,3 +49,27 @@ The local handoff keeps complete transcripts, tool calls, extracted results,
 validation logs and installation provenance. Reproduce in a new session and
 record expected version, observed version, installed root, source revision or
 file hashes, actual article reads and the unmodified action result separately.
+
+## Inline invocation follow-up (preview.2)
+
+On 6 October 2026 both public adapters were clarified: in instruction-file hosts,
+execute steps 1–5 inline in the caller context. The dispatched action's actual
+result remains authoritative; neither dispatches nor citations may be invented.
+The package and marketplace now report 0.3.0-knowledge-preview.2 so installs can
+identify the updated adapter bodies independently of the original preview tests.
+
+A fresh Copilot CLI test used --plugin-dir with the updated source and
+--excluded-tools skill. With the invocation tool disabled, the agent read the
+adapter, Entry, READ, DO, the internal knowledge action, and the full
+validate-table-relation-false-suppresses-rename-propagation article plus its good
+sample. It returned a completed knowledge-response with the exact caller message
+and one observed citation. The saved JSON passes schema and citation-read audit.
+This is a controlled instruction-only CLI test, not a completed Hogargas Step 5
+or a VS Code Copilot Chat execution test. Review-adapter validation is static;
+no new full AL review execution is claimed for preview.2.
+
+Deployment consumers must update their actual installed plugin or corpus and
+record its new commit as well as the version. ALDC's corpus installer regenerates
+an index receipt only in external-multiroot mode; it exits without doing so in
+plugin mode. A stale receipt is unverified provenance, not evidence that helpers
+automatically switch discovery mode. Follow the loaded provider's recovery rules.

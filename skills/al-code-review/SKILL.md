@@ -55,6 +55,11 @@ context and execute the resulting dispatch.
 5. Return each dispatched action skill's findings report unchanged. If Entry
    returns `no-match` or `failed`, return its dispatch record unchanged.
 
+Where the host has no tool to invoke a skill and skills are instruction files the
+agent reads, invoking this skill means executing steps 1–5 inline in the caller's
+own context; the findings report the dispatched action skill produces there is
+the report to return.
+
 The internal `microsoft/skills/review/al-code-review.md` action skill remains
 the canonical coordinator for a broad AL review. Entry decides whether that
 super-skill or a narrower domain skill applies; this host adapter never chooses
