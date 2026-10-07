@@ -31,6 +31,7 @@ READ and DO are read on demand — typically by the first action skill the agent
 | Path | Role |
 |---|---|
 | [`al-code-review/SKILL.md`](al-code-review/SKILL.md) | Exposes BCQuality through the standard `SKILL.md` format when this repository is installed as a plugin. |
+| [`al-knowledge/SKILL.md`](al-knowledge/SKILL.md) | Exposes cited knowledge consultation through the same Entry protocol, without code review. |
 
 The adapter is deliberately thin. It translates the caller's request into an
 Entry task context, then follows Entry's dispatch without owning routing,
@@ -40,10 +41,12 @@ by Entry, and should not accumulate behavior already defined by `entry.md`,
 
 This gives the two skill formats distinct roles:
 
-- `skills/al-code-review/SKILL.md` is the public host integration surface for a
-  standalone plugin installation.
+- `skills/al-code-review/SKILL.md` and `skills/al-knowledge/SKILL.md` are
+  public host integration surfaces for a standalone plugin installation.
 - `microsoft/skills/review/al-code-review.md` is BCQuality's internal
   Microsoft-layer super-skill for coordinating a broad AL review.
+- `microsoft/skills/knowledge/al-knowledge.md` is the internal action skill
+  for a knowledge question and returns a `knowledge-response`.
 
 The host adapter and internal coordinator deliberately share the
 `al-code-review` name because they represent the same user-facing operation in
