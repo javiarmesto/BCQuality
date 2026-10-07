@@ -99,6 +99,15 @@ try {
         'microsoft/skills/review/al-finance-review.md'
     )
     $review = @($skills | Where-Object id -eq 'al-code-review')
+    $knowledge = @($skills | Where-Object id -eq 'al-knowledge')
+    if ($knowledge.Count -ne 1 -or (@($knowledge[0].inputs) -join ',') -ne 'knowledge-query' -or
+        (@($knowledge[0].outputs) -join ',') -ne 'knowledge-response') {
+        throw 'Expected one knowledge-only al-knowledge action.'
+    }
+    $knowledgeCandidates = @($skills | Where-Object { 'knowledge-query' -in $_.inputs })
+    if ($knowledgeCandidates.Count -ne 1 -or $knowledgeCandidates[0].id -ne 'al-knowledge') {
+        throw 'A knowledge-only request must exclude review actions.'
+    }
     if ($review.Count -ne 1) {
         throw "Expected exactly one al-code-review record, found $($review.Count)."
     }
