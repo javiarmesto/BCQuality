@@ -15,7 +15,7 @@ from pathlib import Path, PurePosixPath
 from jsonschema import Draft7Validator
 
 
-def validate_response(response, *, question, root, evidence=None, run_id):
+def validate_response(response, *, question, root, evidence=None, run_id, enabled_layers=("microsoft", "community", "custom")):
     root = Path(root).resolve()
     schema = json.loads((root / "schemas/knowledge-response.schema.json").read_text(encoding="utf-8-sig"))
     validator = Draft7Validator(schema)
@@ -24,6 +24,22 @@ def validate_response(response, *, question, root, evidence=None, run_id):
         return errors
     if response["question"] != question:
         errors.append("question must equal the bound input exactly, including whitespace")
+    known_layers = {"microsoft", "community", "custom"}
+    enabled_layers = set(enabled_layers)
+    if not enabled_layers <= known_layers:
+        errors.append("Unknown enabled layers")
+    for entry in response["references"] + response["suppressed"]:
+        name = entry["path"]
+        parts = name.split("/")
+        file = (root / name).resolve()
+        if "\\" in name or any(part in ("", ".", "..") for part in parts) or not file.is_relative_to(root):
+            errors.append(f"Noncanonical corpus path: {name}")
+        elif not file.is_file():
+            errors.append(f"Corpus path does not exist: {name}")
+        if parts[0] not in enabled_layers:
+            # Configuration exclusions may identify disabled layers, never citations.
+            if entry in response["references"] or entry.get("reason") != "configuration":
+                errors.append(f"Path belongs to a disabled layer: {name}")
     reads = {}
     if evidence is not None:
         if not isinstance(evidence, dict):
@@ -94,12 +110,13 @@ def main():
     parser.add_argument("--question-file", type=Path, required=True, help="Exact bound input as UTF-8; no whitespace trimming")
     parser.add_argument("--read-evidence", type=Path, help="Consumer-collected evidence; required for cited responses")
     parser.add_argument("--run-id", required=True, help="Current run identifier supplied independently by the consumer")
+    parser.add_argument("--enabled-layers", nargs="*", choices=("microsoft", "community", "custom"), default=["microsoft", "community", "custom"], help="Consumer configuration; an empty list disables every layer")
     args = parser.parse_args()
     try:
         errors = validate_response(strict_json(args.response),
             question=args.question_file.read_bytes().decode("utf-8-sig"), root=args.root,
             evidence=strict_json(args.read_evidence) if args.read_evidence else None,
-            run_id=args.run_id)
+            run_id=args.run_id, enabled_layers=args.enabled_layers)
     except (OSError, ValueError) as error:
         print(json.dumps({"valid": False, "errors": [str(error)]}))
         return 2

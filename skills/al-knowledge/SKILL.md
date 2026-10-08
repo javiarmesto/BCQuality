@@ -38,6 +38,8 @@ dispatched internal action skill.
    `PLUGIN_ROOT/tools/validate_knowledge_response.py` with its own question
    and read evidence. Preserve the raw result when validation fails; record
    that failure separately instead of repairing or accepting the answer.
+   Inline checks by the answering agent are self-attestation, not independent
+   verification. Independent checks require a trusted consumer read collector.
    Return a valid response unchanged, or Entry's `no-match` / `failed`
    dispatch record unchanged.
 

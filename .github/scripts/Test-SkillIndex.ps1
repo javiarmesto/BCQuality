@@ -108,6 +108,21 @@ try {
     if ($knowledgeCandidates.Count -ne 1 -or $knowledgeCandidates[0].id -ne 'al-knowledge') {
         throw 'A knowledge-only request must exclude review actions.'
     }
+    # Entry applies READ's non-empty technology intersection to indexed actions.
+    $alKnowledge = @($knowledgeCandidates | Where-Object { 'al' -in $_.filters.technologies })
+    if ($alKnowledge.Count -ne 1 -or $alKnowledge[0].id -ne 'al-knowledge') {
+        throw 'Entry must admit knowledge-query with technologies: [al].'
+    }
+    foreach ($dimension in 'bc-version', 'countries', 'application-area') {
+        $expected = if ($dimension -eq 'countries') { 'w1' } else { 'all' }
+        if ($expected -notin $knowledge[0].filters.$dimension) {
+            throw "Missing knowledge action applicability: $dimension"
+        }
+    }
+    $reviewCandidates = @($skills | Where-Object { 'file-path' -in $_.inputs -and 'al' -in $_.filters.technologies })
+    if ('al-code-review' -notin $reviewCandidates.id -or 'al-knowledge' -in $reviewCandidates.id) {
+        throw 'AL file input must admit code review and exclude knowledge consultation.'
+    }
     if ($review.Count -ne 1) {
         throw "Expected exactly one al-code-review record, found $($review.Count)."
     }

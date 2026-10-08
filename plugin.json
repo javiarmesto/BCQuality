@@ -1,7 +1,7 @@
 {
   "name": "bcquality",
   "description": "Business Central quality knowledge and skills for AL code review and cited knowledge consultation.",
-  "version": "0.3.0-knowledge-preview.3",
+  "version": "0.2.0",
   "author": {
     "name": "microsoft/BCQuality",
     "url": "https://github.com/microsoft/BCQuality"

@@ -410,7 +410,11 @@ dimension in `unknown[]`; fully applicable references use `applicable` with an
 empty `unknown[]`. READ defines matching and conflict precedence. Record
 displaced articles in `suppressed[]` without citing them as supporting guidance.
 
-`completed` requires a useful answer and at least one verified reference.
+`completed` requires a useful answer to the bound question and at least one
+verified supporting reference. Applicability under READ does not establish
+question relevance. Articles about an adjacent topic do not justify `completed`
+or `partial` when none addresses the requested subject. In that case use
+`no-knowledge` with no references and explain only the coverage gap.
 `no-knowledge` means no applicable article answers the question; `answer`
 may explain the gap but `references` stays empty. `partial` records the reason
 and cites only articles actually read; `failed` records the reason with no
@@ -425,6 +429,14 @@ For deterministic consumer checks, see
 The helper checks schema, exact question, and complete-read evidence against
 the live corpus. It does not prove comprehension, source support for every
 claim, or applicability; those checks still follow READ and this contract.
+
+
+In an inline host, the answering agent checks its own successful full-body tool
+reads. This is self-attestation, not independent citation verification. A
+consumer with a trusted read collector can independently check the evidence
+using the optional validator. Neither mode proves that every claim correctly
+interprets its sources. Report the mode used; never present inline checks as
+independent verification.
 
 ## Composition (super-skills)
 

@@ -39,6 +39,46 @@ class KnowledgeSemantics(unittest.TestCase):
         return module.validate_response(self.response, question=self.question, root=self.root,
             evidence=self.evidence if evidence else None, run_id="test-run")
 
+    def test_disabled_citation_layer(self):
+        errors = module.validate_response(self.response, question=self.question, root=self.root,
+            evidence=self.evidence, run_id="test-run", enabled_layers=["community"])
+        self.assertTrue(any("disabled layer" in error for error in errors))
+
+    def test_configuration_suppression_disabled_layer(self):
+        self.response.update(outcome="no-knowledge", references=[], suppressed=[{"path": self.path, "reason": "configuration"}])
+        self.assertEqual(module.validate_response(self.response, question=self.question, root=self.root,
+            run_id="test-run", enabled_layers=[]), [])
+
+    def test_precedence_suppression_disabled_layer(self):
+        self.response.update(outcome="no-knowledge", references=[], suppressed=[{"path": self.path, "reason": "layer-precedence"}])
+        self.assertTrue(module.validate_response(self.response, question=self.question, root=self.root,
+            run_id="test-run", enabled_layers=[]))
+
+    def test_suppressed_path_traversal(self):
+        self.response["suppressed"] = [{"path": "microsoft/knowledge/../skills/x.md", "reason": "configuration"}]
+        self.assertTrue(self.errors())
+
+    def test_missing_suppressed_file(self):
+        self.response["suppressed"] = [{"path": "custom/knowledge/missing.md", "reason": "configuration"}]
+        self.assertTrue(self.errors())
+
+    def test_enabled_layers_cli(self):
+        response_file = self.root / "response.json"
+        question_file = self.root / "question.txt"
+        evidence_file = self.root / "reads.json"
+        response_file.write_text(json.dumps(self.response), encoding="utf-8")
+        question_file.write_bytes(self.question.encode("utf-8"))
+        evidence_file.write_text(json.dumps(self.evidence), encoding="utf-8")
+        result = subprocess.run([sys.executable, str(TOOL), str(response_file), "--root", str(self.root),
+            "--question-file", str(question_file), "--read-evidence", str(evidence_file),
+            "--run-id", "test-run", "--enabled-layers", "community"], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("disabled layer", result.stdout)
+
+    def test_unknown_enabled_layer(self):
+        self.assertTrue(module.validate_response(self.response, question=self.question, root=self.root,
+            evidence=self.evidence, run_id="test-run", enabled_layers=["unknown"]))
+
     def test_valid_and_unchanged(self):
         original = copy.deepcopy(self.response)
         self.assertEqual(self.errors(), [])

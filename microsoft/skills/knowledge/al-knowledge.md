@@ -6,6 +6,10 @@ title: AL knowledge consultation
 description: Answer a Business Central development question with cited knowledge, without reviewing source code.
 inputs: [knowledge-query]
 outputs: [knowledge-response]
+bc-version: [all]
+technologies: [al]
+countries: [w1]
+application-area: [all]
 ---
 
 # AL knowledge consultation
@@ -27,6 +31,11 @@ Apply READ's frontmatter matching rules for any known BC version, technology,
 country, and application area. Exclude definite mismatches. Keep conditional
 matches with their exact unknown dimensions. Interpret competing articles and
 layer precedence under READ; record any displaced article in `suppressed`.
+
+Frontmatter applicability is not question relevance. A universal country or
+version filter does not make an article answer every domain question. Candidate
+keyword overlap is discovery only. After reading, retain as supporting evidence
+only articles that address the requested subject and its essential constraints.
 
 ## Worklist
 
@@ -50,9 +59,20 @@ invoke review action skills, emit severities, or generate a findings-report.
 If no applicable article answers the question, return `no-knowledge` instead
 of filling the gap from general model knowledge under BCQuality's name.
 
+Before choosing the outcome, check whether the supporting articles answer the
+bound question rather than a broader or adjacent question. Do not replace an
+unsupported domain or target with general coding or localization advice merely
+because some keywords overlap. If none answers the requested subject, return
+`no-knowledge` with `references: []`; the answer may explain the coverage gap,
+but must not append adjacent guidance with citations. Candidate reads may be
+recorded separately in execution diagnostics. Use `partial` only when articles
+support a genuine part of the requested question, with the uncovered part
+explicitly identified; adjacent-topic advice alone is not partial coverage.
+
 ## Output
 
 Return one JSON value following `schemas/knowledge-response.schema.json` and
 DO's knowledge-response rules. `question` preserves the caller's question.
-`completed` requires at least one fully read, checked reference. `partial`
+`completed` requires an answer to the actual question and at least one fully
+read, checked supporting reference. `partial`
 requires a reason and only cites articles actually read; `failed` cites none.

@@ -23,6 +23,14 @@ or their prepared index are unavailable. The original repository's Python and
 PyYAML frontmatter checks are development/CI tooling, not prerequisites for
 question-only consultation.
 
+
+In an inline host, the answering agent checks its own successful full-body tool
+reads. This is self-attestation, not independent citation verification. A
+consumer with a trusted read collector can independently check the evidence
+using the optional validator. Neither mode proves that every claim correctly
+interprets its sources. Report the mode used; never present inline checks as
+independent verification.
+
 ## Consumer inputs
 
 Preserve the raw response as one JSON object, without Markdown fences or extra
@@ -87,6 +95,15 @@ Passing does not establish that every claim follows from its references, that
 target applicability is correct, or that the corpus covers the question fully.
 Those checks require the [READ rules](../skills/read.md) and actual execution
 evidence. Catalog discovery and schema validity alone do not prove execution.
+
+## Enabled layers
+
+Supply the consumer configuration through `--enabled-layers microsoft community`
+(or all three by default). An explicit empty list disables every layer.
+Citations and layer-precedence suppressions must belong to enabled layers.
+A `suppressed` entry with reason `configuration` may identify an existing
+article in a disabled layer; it is an exclusion record, never supporting evidence.
+All these paths must be canonical existing corpus files.
 
 ## Regression tests
 

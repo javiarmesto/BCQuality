@@ -9,7 +9,7 @@
       "name": "bcquality",
       "source": "./",
       "description": "Business Central quality knowledge and skills for AL code review and cited knowledge consultation.",
-      "version": "0.3.0-knowledge-preview.3",
+      "version": "0.2.0",
       "skills": [
         "./skills/"
       ]
