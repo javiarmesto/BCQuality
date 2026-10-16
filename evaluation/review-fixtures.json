@@ -197,7 +197,8 @@
         "check-http-status-before-consuming-response-body",
         "check-json-null-before-converting-values",
         "format-exchanged-values-with-standard-format-9",
-        "api-page-least-privilege-write-access"
+        "api-page-least-privilege-write-access",
+        "describe-api-pages-for-mcp-with-abouttext"
       ]
     }
   }

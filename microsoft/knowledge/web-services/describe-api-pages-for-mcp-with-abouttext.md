@@ -1,31 +1,37 @@
 ---
-bc-version: [21..]
+bc-version: [28..]
 domain: web-services
-keywords: [api-page, api-query, abouttext, abouttitle, mcp, tool-description, agents, entitysetcaption]
+keywords: [api-page, api-query, abouttext, mcp, tool-description, entitysetcaption, metadata]
 technologies: [al]
 countries: [w1]
 application-area: [all]
 ---
 
-# Describe API pages and queries with `AboutText` for MCP tools
+# Describe API objects intended for Business Central MCP tools
 
 ## Description
 
-The Business Central MCP server exposes API pages and API queries as tools, and an agent picks a tool by reading its description. The server builds that description from `AboutText` first, then falls back to `EntitySetCaption`, then to the camelCase `EntityName`. An API page without `AboutText` therefore reaches the agent as a bare plural noun, with nothing about what the entity holds, which rows it returns or which values are computed. LLMs treat `AboutText` and `AboutTitle` as UI teaching-tip properties and leave them off API objects, because API pages are never shown in the client. The compiler and the analyzers do not flag the omission.
+For API pages and API queries exposed through the Business Central online MCP server, the documented tool-description precedence is `AboutText`, then `EntitySetCaption`, then a camel-cased `EntityName`. Treating `AboutText` only as a UI teaching-tip property can leave an agent with a caption that omits essential scope or computed-value semantics. This guidance covers BC 28 and later online environments with the relevant MCP API-object support; the earlier MCP preview is outside its scope.
 
 ## Best Practice
 
-On every `PageType = API` page and `QueryType = API` query that may be exposed as an MCP tool, set `AboutText` to one or two sentences. Say what one record is, which records the endpoint returns (filters, document types, scope) and any value that is computed at read time instead of stored. Set `AboutTitle` as well, since the platform expects the pair. Write it for a reader who only sees the tool list, and keep it consistent with `EntityCaption` and `EntitySetCaption`.
+For an API object intended for MCP use, provide a tool description that explains what a row represents, material filters and any computed values that affect interpretation. Prefer `AboutText` when captions alone cannot convey those facts. Keep the description consistent with the actual filters, fields and allowed operations. Verify the description exposed by the configured MCP tool; metadata text does not enforce filters or permissions.
+
+The documented extraction order does not use `AboutTitle`. Do not require it solely for MCP: Microsoft ships API queries with `AboutText` and no `AboutTitle`, and the compiler accepts that form. Teaching tips have separate pairing requirements. Do not flag an absent `AboutText` when the effective fallback already describes the tool adequately, or when the object has no established MCP use. Other MCP servers and connectors can choose a different description source; check their contract before applying this rule.
 
 See sample: [`describe-api-pages-for-mcp-with-abouttext.good.al`](describe-api-pages-for-mcp-with-abouttext.good.al).
 
 ## Anti Pattern
 
-An API page or API query with no `AboutText`, or with a value that only repeats the entity name, such as "Margin lines". The agent cannot tell the endpoint apart from similar ones, or know that a field like a margin percentage is recalculated live. It then picks the wrong tool or misreads the data. The detection signal: a `PageType = API` page or `QueryType = API` query that does not set `AboutText`.
+An API object intended for an MCP tool exposes a description that omits material endpoint semantics, such as excluding credit memos or including only item lines, because it relies on a bare entity caption. Another defect is an `AboutText` that promises restrictions the endpoint does not implement. Missing `AboutText` alone is a discovery signal, not sufficient evidence of a finding; establish the intended MCP use and the deficient effective description.
 
 See sample: [`describe-api-pages-for-mcp-with-abouttext.bad.al`](describe-api-pages-for-mcp-with-abouttext.bad.al).
 
 ## References
 
-- [AboutText property](https://learn.microsoft.com/dynamics365/business-central/dev-itpro/developer/properties/devenv-abouttext-property)
-- [API page type: describe the API for MCP tools](https://learn.microsoft.com/dynamics365/business-central/dev-itpro/developer/devenv-api-pagetype#describe-the-api-for-mcp-tools)
+- [API page type and MCP description precedence](https://learn.microsoft.com/dynamics365/business-central/dev-itpro/developer/devenv-api-pagetype#describe-the-api-for-mcp-tools)
+- [API query type and MCP description precedence](https://learn.microsoft.com/dynamics365/business-central/dev-itpro/developer/devenv-api-querytype#describe-the-api-for-mcp-tools)
+- [AboutText property and teaching-tip requirements](https://learn.microsoft.com/dynamics365/business-central/dev-itpro/developer/properties/devenv-abouttext-property)
+- [BC 28 release and generally available enhanced MCP server](https://learn.microsoft.com/dynamics365/business-central/dev-itpro/whatsnew/whatsnew-update-28-0)
+- [API query support in the 2026 release wave 1 MCP enhancements](https://learn.microsoft.com/dynamics365/release-plan/2026wave1/smb/dynamics365-business-central/unlock-more-business-central-data-mcp-server-enhancements)
+- [Microsoft API Finance query with AboutText and no AboutTitle](https://github.com/microsoft/BCApps/blob/e51c552efbeb6821db450b199aae6b015371866c/src/Apps/W1/APIReportsFinance/App/src/APIFinanceGLEntry.Query.al)
