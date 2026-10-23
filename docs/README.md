@@ -26,7 +26,9 @@ prerequisites for using the plugin.
 | --- | --- |
 | [Minimal integration example](agent-consumption.md#try-a-minimal-integration) | A bootstrap prompt connecting your agent to a BCQuality checkout and an app folder. |
 | [How agents consume BCQuality](agent-consumption.md) | Architecture, repository structure, routing, and delivery of findings. |
+| [Plan guidance integration (preview)](agent-consumption.md#plan-guidance-integration-preview) | Apply BCQuality constraints to an existing development plan before implementation. |
 | [Standalone runner](standalone-runner.md) | Optional model selection, scheduling, retries, and telemetry. |
+| [SARIF export](standalone-runner.md#publish-findings-as-sarif) | Show accepted findings as code scanning annotations in GitHub or Azure DevOps. |
 | [Global skills](../skills/README.md) | Host adapters versus internal protocol files. |
 | [Knowledge-response validation](knowledge-response-validation.md) | Optional consumer checks for question fidelity and complete citation reads. |
 | [Entry](../skills/entry.md) | Task context and skill dispatch. |

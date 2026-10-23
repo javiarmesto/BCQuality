@@ -74,27 +74,29 @@ Add scheduling, retries, and rendering only when needed, using the
 - **Orchestrator** — the tool that triggers work. Lives *outside* BCQuality. Knows *when* to run something, not *what* to run.
 - **Agent** — an LLM-driven process supplied by the host. It brings its own coding knowledge and tools; BCQuality adds curated guidance and execution contracts.
 - **BCQuality repo** — two kinds of content:
-  - **Global skills** in `/skills/` — the `entry.md` entry-point skill plus the READ · DO · WRITE contracts that govern the rest of the repo.
+  - **Global skills** in `/skills/` — the `entry.md` router plus the READ · DO · WRITE contracts that govern the rest of the repo.
   - **Layer content** in `/microsoft/`, `/community/`, and `/custom/` — knowledge files and action skills grouped by authority.
 
 When BCQuality is installed as a standalone plugin, it additionally exposes
-`skills/al-code-review/SKILL.md` and `skills/al-knowledge/SKILL.md`. These public
-skill entry points tell the host agent how to create the task context and enter
-the same flow at Entry. They are not additional action skills.
+one host-format adapter per capability: `skills/al-code-review/SKILL.md`,
+`skills/al-knowledge/SKILL.md`, and the preview
+`skills/al-plan-guidance/SKILL.md`. Adapters are not additional action skills:
+each creates the task context for its capability and enters the same flow at Entry.
 
 ## Repository structure
 
 | Path | Purpose |
 | --- | --- |
-| `skills/entry.md` | Routes a task to action skills. |
+| `skills/entry.md` | Router: prepares the index and routes a task to action skills. |
 | `skills/read.md`, `skills/do.md`, `skills/write.md` | Stable knowledge, action-skill, and authoring contracts. |
-| `skills/al-code-review/SKILL.md` | Host-format plugin adapter. |
-| `skills/al-knowledge/SKILL.md` | Public skill entry point for cited knowledge consultation. |
+| `skills/<capability>/SKILL.md` | Host-format plugin adapters, one per capability. |
 | `<layer>/knowledge/<domain>/` | Atomic articles and optional sibling samples. |
-| `<layer>/skills/` | Layer-owned action skills. |
+| `<layer>/skills/` | Layer-owned review and plan-guidance action skills. |
+| `schemas/` | JSON Schemas for the skill index and report contracts. |
+| `plugin.json`, `.claude-plugin/` | Host plugin and marketplace manifests. |
 | `docs/` | Partner guides and integration references. |
 | `evaluation/` | Neutral review fixtures and scoring contract. |
-| `tools/` | Knowledge-index and evaluation tooling. |
+| `tools/` | Knowledge discovery and retrieval, skill resolution, report validation, SARIF export, and evaluation tooling. |
 | `.github/` | Validation and repository workflows. |
 
 Layers are `microsoft`, `community`, and `custom`; Custom is a template for
@@ -111,7 +113,7 @@ flowchart LR
     E -->|3 dispatch record| A
     A -->|4 invoke dispatched skill| S[Action skill<br/>e.g. al-code-review]
     S -->|5 execute| P[Source → Relevance<br/>→ Worklist → Action<br/>reading READ · DO on demand]
-    P -->|6 emit| R[Findings · Domain labels<br/>· References · Confidence]
+    P -->|6 emit| R[Findings report<br/>or read-only guidance report]
     R -->|7 integrate| O
 ```
 
@@ -129,7 +131,11 @@ semantics. For knowledge consultation, it binds the exact question as
 `knowledge-query`; see [knowledge consultation](knowledge-consultation.md).
 
 ### 3. Agent consumes the dispatch record
-The dispatch record names one or more action skills and the subset of inputs each should receive. If the outcome is `no-match` or `failed`, the agent returns the record to the orchestrator unchanged.
+The dispatch record names one or more action skills, the subset of inputs each
+should receive, and each skill's output kind. The output kind distinguishes
+findings from read-only plan guidance before invocation; it is not proof of
+runtime side effects. If the outcome is `no-match` or `failed`, the agent returns
+the record to the orchestrator unchanged.
 
 ### 4. Agent invokes each dispatched action skill
 Action skills live inside the layers — `/microsoft/skills/`, `/community/skills/`, `/custom/skills/` — so their authority is carried by their location. For a PR review, Entry typically dispatches `microsoft/skills/review/al-code-review.md`. The agent reads the file and executes it.
@@ -168,15 +174,10 @@ security boundary. See [layer selection](customizing-bcquality.md#select-layers-
 The index changes only *how candidates are discovered*, never *which are selected*. The Worklist predicate is unchanged — `keywords` still drive selection — and the agent still opens each worklisted article **in full** to read its `## Best Practice` / `## Anti Pattern` rule bodies; the index is discovery metadata only and never substitutes for the article body. When no index is present, skills fall back to path-based discovery (collect by domain folder), so review still works.
 
 ### 6. Agent emits structured output
-DO defines each declared output kind so consumers can validate its shared
-contract. Review actions produce `findings-report`, whose structure includes:
+The output contracts are defined in the DO meta-skill:
 
-- **Outcome** — `completed`, `not-applicable`, `no-knowledge`, `partial`, or `failed`. An orchestrator can distinguish a clean run from a no-op from a failure without guessing.
-- **Findings** — what the skill observed (severity, message, optional location).
-- **Domain** — the producer-owned, human-readable display label on each review finding.
-- **References** — structured objects (`path` plus optional commit `sha`) pointing to the knowledge files that informed each finding.
-- **Confidence** — per-finding evidence strength.
-- **Suppressed** — knowledge files that were discarded by layer precedence or configuration, so reviewers can see what was overridden.
+- A **findings report** carries review findings, domain labels, references, confidence, and suppressions.
+- A **development guidance report** carries read-only knowledge constraints and validation considerations for an existing plan.
 
 Knowledge-consultation actions produce `knowledge-response`, with the exact
 question, supported answer and article references. See the
@@ -187,8 +188,126 @@ The orchestrator validates the declared output kind without interpreting
 private skill-specific fields. Action skills and consumers share the same
 output contracts.
 
+For plan enrichment, the skill reads the existing plan and target repository,
+selects applicable knowledge, and returns constraints without changing the
+target. It does not generate a replacement plan, run tests, implement code, or
+drive a review/fix loop. Implementation stays in the consuming workflow.
+
 ### 7. Orchestrator integrates
-The orchestrator turns findings into PR comments, build gates, or IDE diagnostics, and links the references back to the knowledge files so the PR author — human or agent — can read the guidance.
+The orchestrator turns findings into PR comments, build gates, or IDE diagnostics. It can feed read-only guidance into its own implementation phases, preserving all existing approvals and delivery gates.
+
+## Plan guidance integration (preview)
+
+The preview `al-development-plan` skill applies BCQuality knowledge to an
+existing AL development plan before implementation. It is read-only: it never
+changes the plan or the repository.
+
+### Try plan guidance
+
+With the plugin installed, use the `al-plan-guidance` skill as shown in the
+[README](../README.md#preview-guidance-before-implementation). Without the
+plugin, use the same dedicated BCQuality checkout as the
+[minimal integration](#try-a-minimal-integration), and save your existing plan
+as a file. Replace the paths and BC version, then send this prompt to the agent:
+
+```text
+BCQuality root: C:\Knowledge\BCQuality
+Development plan: C:\Plans\my-change-plan.md
+Repository: C:\Repos\MyBusinessCentralApp
+
+Read BCQuality's skills\entry.md and follow it with this task context:
+task-context:
+  goal: Enrich my existing AL development plan with applicable BCQuality guidance without changing the plan or repository.
+  inputs-available: [development-plan, repository]
+  technologies: [al]
+  bc-version: 28
+  enabled-layers: [microsoft, community, custom]
+  disabled-skills: []
+
+Resolve BCQuality instructions, knowledge, and index preparation against the
+BCQuality root. Pass the plan file's contents as development-plan and the
+repository path as repository. Do not modify the plan or the repository.
+Execute the dispatched skill and return its development guidance report
+unchanged. If Entry returns no-match or failed, return that dispatch record.
+```
+
+A useful plan states the intended change, affected objects or files, proposed
+approach, test strategy, and acceptance criteria. The report lists each
+applicable article, the plan decision it informs, concrete implementation
+constraints, and any validation the change should demonstrate. `no-knowledge`
+means BCQuality has no additional constraints for that plan; it does not mean
+the plan is unsafe.
+
+Give the plan and the report to your coding agent together. After
+implementation, run a normal BCQuality review of the completed change: the
+guidance report is input to the work, not proof that the result is correct.
+
+### Integration boundary
+
+A repository-specific workflow can consume this read-only foundation before
+authoring while retaining its independent final review. This is the intended
+integration boundary for the preview skill, not a shipped consumer integration
+or a stable plugin surface:
+
+1. Investigate and produce the consumer's normal initial plan. Normalize any
+   consumer-specific format outside BCQuality. A full serialized plan document
+   containing metadata plus a markdown body (root cause or design intent,
+   proposed changes, affected files, test strategy, acceptance criteria) is a
+   valid boundary. A continuation/checkpoint payload is not a substitute for
+   initial-plan coverage; workflow identifiers and state stay with the consumer.
+2. Resolve and record an immutable BCQuality checkout and filtering policy.
+   Invoke Entry with a read-only enrichment goal, the existing
+   `development-plan`, `repository`, and established applicability dimensions.
+   Keep index, guidance, and runner artifacts outside the target repository.
+3. Execute the dispatched `al-development-plan` skill. Persist the unchanged
+   report and provenance **after** any consumer state initialization or cleanup
+   that could erase them. BCQuality does not own the state directory or lifecycle.
+4. Inject relevant constraints and validation considerations into the
+   workflow's existing test, implementation, propagation, and critique phases,
+   or equivalents. Re-enrich on material plan or applicability changes; preserve
+   the relationship between plan version, guidance, and implementation attempt.
+5. Run an independent final BCQuality review against the completed diff using
+   the **same recorded immutable checkout** used for enrichment. Review the
+   actual changes, not the guidance report as proof of correctness, then apply
+   the consumer's ordinary delivery gates.
+
+The consumer owns analysis, normalization, persistence, per-phase injection,
+approvals, TDD and runtime execution, propagation, retries, commits, and PR
+delivery. BCQuality supplies additional referenced product knowledge, not a
+replacement orchestrator.
+
+Consumer owners must agree the input/output contract and insertion point before
+adoption. Runtime mutation-proofing and effectiveness measurement belong to the
+consumer pilot rather than the BCQuality content repository.
+
+### Outcomes are additive, not a universal coding gate
+
+`no-knowledge` with empty `knowledge` means no additional applicable BCQuality
+constraints. The consumer may proceed under its ordinary gates. It must not be
+conflated with failed retrieval/reference integrity (`failed`), incomplete
+evaluation or materially unresolved conditional guidance (`partial`), or absent
+required inputs (`not-applicable`). Consumers own the policy for handling those
+outcomes and recorded unknowns: seek missing context, re-enrich, escalate, or
+apply their existing risk controls without relabeling the report as successful.
+Do not fill gaps with generic articles simply to unlock implementation.
+
+### Pinning and pilot evidence
+
+A configured tag or ref alone does not establish runtime pinning. Record the
+resolved commit and actual checkout/content identity used at invocation, along
+with enabled layers, pruning policy, index identity, plan version, and runner
+provenance. Verify that identity at both enrichment and final review; fetching
+default HEAD into an explicitly supplied checkout can bypass a configured ref.
+Use an isolated checkout that cannot drift during the run.
+
+Consumer rollout and an external pilot remain follow-up work. A pilot must
+compare a pinned independent baseline run of the existing workflow without
+enrichment against a matched enriched run, keeping starting code, task, model,
+tools, runtime, and gates controlled and recording the actual BCQuality
+checkout. Retain external logs, diffs, test/compile outcomes, and independent
+final reviews, including failures and unresolved results. Credential-free
+fixture preparation and scorer regressions do not demonstrate improved repair
+quality, compilation, runtime success, or production integration.
 
 For knowledge consultation, it displays validated guidance with citations.
 It does not convert that guidance into findings or use it as an approval gate.

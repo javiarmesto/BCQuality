@@ -28,7 +28,7 @@ def validate_response(response, *, question, root, evidence=None, run_id, enable
     enabled_layers = set(enabled_layers)
     if not enabled_layers <= known_layers:
         errors.append("Unknown enabled layers")
-    valid_paths = set()
+    valid_paths = {}
     for entry in response["references"] + response["suppressed"]:
         name = entry["path"]
         parts = name.split("/")
@@ -38,7 +38,7 @@ def validate_response(response, *, question, root, evidence=None, run_id, enable
         elif not file.is_file():
             errors.append(f"Corpus path does not exist: {name}")
         else:
-            valid_paths.add(name)
+            valid_paths[name] = file
         if parts[0] not in enabled_layers:
             # Configuration exclusions may identify disabled layers, never citations.
             if entry in response["references"] or entry.get("reason") != "configuration":
@@ -68,7 +68,7 @@ def validate_response(response, *, question, root, evidence=None, run_id, enable
         name = reference["path"]
         if name not in valid_paths:
             continue
-        file = (root / name).resolve()
+        file = valid_paths[name]
         record = reads.get(name)
         if record is None or record.get("complete") is not True:
             errors.append(f"No complete read evidence for citation: {name}")

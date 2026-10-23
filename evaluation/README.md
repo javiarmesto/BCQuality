@@ -15,6 +15,14 @@ is mandatory.
 
 Model-facing preparation hashes case IDs, neutralizes `Good`/`Bad` object-name tokens, and removes full-line sample comments so neither the article slug, domain, nor expected outcome reveals the answer.
 
+The core AL samples for BLOB loading, isolated shipment events, expense-page
+scope filters, and stream encoding include their minimal demo tables in each
+companion independently. BLOB field types and shipment status members therefore
+survive preparation without relying on another sample. The stream-encoding
+clean control deliberately writes UTF-8 text and downloads the existing bytes
+through a default-encoding InStream: transport alone does not transcode text
+and must not trigger the encoding rule.
+
 The SCM `articles` override deliberately selects every rule in the initial
 functional domain, producing nine positive cases and nine clean controls.
 Business context is executable: document/status `TestField` guards,
