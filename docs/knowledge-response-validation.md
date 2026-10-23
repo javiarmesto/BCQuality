@@ -23,13 +23,13 @@ or their prepared index are unavailable. The original repository's Python and
 PyYAML frontmatter checks are development/CI tooling, not prerequisites for
 question-only consultation.
 
-
 In an inline host, the answering agent checks its own successful full-body tool
 reads. This is self-attestation, not independent citation verification. A
 consumer with a trusted read collector can independently check the evidence
 using the optional validator. Neither mode proves that every claim correctly
-interprets its sources. Report the mode used; never present inline checks as
-independent verification.
+interprets its sources. Record the mode used in the consumer's own run record,
+not in the `knowledge-response` JSON, whose schema has no mode field. Never
+present inline checks as independent verification.
 
 ## Consumer inputs
 

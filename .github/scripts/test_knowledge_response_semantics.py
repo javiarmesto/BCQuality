@@ -96,6 +96,21 @@ class KnowledgeSemantics(unittest.TestCase):
         self.response["references"][0]["path"] = "microsoft/knowledge/performance/missing.md"
         self.assertTrue(self.errors())
 
+    def test_invalid_corpus_path_is_reported_once(self):
+        for collection in ("references", "suppressed"):
+            for path in ("microsoft/knowledge/performance/missing.md",
+                         "microsoft/knowledge/performance/../performance/example.md"):
+                with self.subTest(collection=collection, path=path):
+                    response = copy.deepcopy(self.response)
+                    if collection == "references":
+                        response[collection][0]["path"] = path
+                    else:
+                        response[collection] = [{"path": path, "reason": "configuration"}]
+                    errors = module.validate_response(response, question=self.question, root=self.root,
+                        evidence=self.evidence, run_id="test-run")
+                    self.assertEqual(len(errors), 1, errors)
+                    self.assertIn(path, errors[0])
+
     def test_missing_read_evidence(self):
         self.assertTrue(self.errors(evidence=False))
 

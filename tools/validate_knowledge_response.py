@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 from jsonschema import Draft7Validator
 
@@ -28,6 +28,7 @@ def validate_response(response, *, question, root, evidence=None, run_id, enable
     enabled_layers = set(enabled_layers)
     if not enabled_layers <= known_layers:
         errors.append("Unknown enabled layers")
+    valid_paths = set()
     for entry in response["references"] + response["suppressed"]:
         name = entry["path"]
         parts = name.split("/")
@@ -36,6 +37,8 @@ def validate_response(response, *, question, root, evidence=None, run_id, enable
             errors.append(f"Noncanonical corpus path: {name}")
         elif not file.is_file():
             errors.append(f"Corpus path does not exist: {name}")
+        else:
+            valid_paths.add(name)
         if parts[0] not in enabled_layers:
             # Configuration exclusions may identify disabled layers, never citations.
             if entry in response["references"] or entry.get("reason") != "configuration":
@@ -63,14 +66,9 @@ def validate_response(response, *, question, root, evidence=None, run_id, enable
                     reads[record["path"]] = record
     for reference in response["references"]:
         name = reference["path"]
-        parts = name.split("/")
-        if "\\" in name or any(part in ("", ".", "..") for part in parts) or PurePosixPath(name).is_absolute():
-            errors.append(f"Noncanonical citation path: {name}")
+        if name not in valid_paths:
             continue
         file = (root / name).resolve()
-        if not file.is_relative_to(root) or not file.is_file():
-            errors.append(f"Citation is missing or outside the corpus: {name}")
-            continue
         record = reads.get(name)
         if record is None or record.get("complete") is not True:
             errors.append(f"No complete read evidence for citation: {name}")
