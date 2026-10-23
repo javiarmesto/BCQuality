@@ -3,8 +3,26 @@
   "selection": "first-paired-al-article",
   "minimumExpectedRecall": 1.0,
   "minimumCleanRate": 1.0,
-  "coverageWaivers": [],
+  "coverageWaivers": [
+    {
+      "path": "microsoft/knowledge/reporting/do-not-rename-or-remove-shipped-report-dataset-columns.md",
+      "reason": "The defect is a change relative to a released version; a single neutralized sample cannot show which column names shipped before."
+    },
+    {
+      "path": "microsoft/knowledge/reporting/reportextension-layouts-are-not-selected-automatically.md",
+      "reason": "The defect is the expectation that the layout becomes the default; the code alone is identical to a legitimate optional layout once comments are removed."
+    }
+  ],
   "overrides": {
+    "copilot": {
+      "articles": [
+        "call-azure-openai-through-the-ai-module",
+        "check-aoai-operation-response-before-using-output",
+        "keep-user-input-out-of-the-system-message",
+        "register-copilot-capability-on-install-and-upgrade",
+        "save-promptdialog-proposals-only-when-the-user-keeps-them"
+      ]
+    },
     "agents": {
       "article": "wire-all-three-agent-interfaces"
     },
@@ -14,6 +32,8 @@
     "data-modeling": {
       "articles": [
         "activate-new-price-calculation-handler-via-onfindsupportedsetup",
+        "business-state-must-have-a-domain-owner",
+        "calcfields-blob-before-reading-its-stream",
         "check-blocked-in-referencing-code-not-in-master",
         "code-must-not-change-workdate",
         "custom-document-dispatch-must-not-bypass-report-selections",
@@ -27,6 +47,7 @@
         "new-price-source-must-add-candidate-and-trigger-recalculation",
         "pictures-must-use-media-not-blob",
         "report-barcodes-must-use-barcode-module-and-production-font-name",
+        "round-calculated-unit-prices-to-unit-amount-precision",
         "table-design-must-match-bc-table-type-conventions",
         "tablerelation-field-length-must-match-related-field",
         "transferfields-mirrored-fields-must-match-type-and-length"
@@ -44,7 +65,9 @@
       "articles": [
         "reset-ishandled-only-when-the-value-can-carry-over",
         "changecompany-runs-triggers-in-the-calling-company",
-        "database-trigger-setup-flags-may-only-be-set-to-true"
+        "database-trigger-setup-flags-may-only-be-set-to-true",
+        "isolated-events-are-isolated-only-outside-a-write-transaction",
+        "isolated-event-rollback-does-not-undo-var-parameters"
       ]
     },
     "finance": {
@@ -76,6 +99,7 @@
         "store-scheduled-task-id-to-avoid-duplicate-tasks",
         "design-covering-keys-from-read-pattern",
         "review-overlapping-keys-before-adding-an-index",
+        "justify-low-selectivity-fields-in-key-columns",
         "setcurrentkey-sets-sort-order-not-index-hint",
         "preserve-buffered-inserts-by-separating-target-reads",
         "aggregate-before-persisting-intermediate-results",
@@ -83,6 +107,7 @@
         "avoid-repeating-unchanged-validation",
         "avoid-get-inside-loop-on-large-table",
         "isempty-before-findset-is-extra-round-trip",
+    "boolean-operators-do-not-short-circuit",
         "query-results-bypass-primary-key-cache",
         "calcsums-instead-of-calcfields-in-loop",
         "use-setautocalcfields-for-per-row-flowfields",
@@ -91,7 +116,8 @@
         "prefer-modifyall-over-per-row-modify",
         "al-methods-limited-during-write-transactions",
         "avoid-user-prompts-inside-transactions",
-        "use-grouped-query-for-distinct-values-and-duplicates"
+        "use-grouped-query-for-distinct-values-and-duplicates",
+        "compute-role-center-headlines-in-the-background"
       ]
     },
     "privacy": {
@@ -104,6 +130,8 @@
     "query": {
       "articles": [
         "dataitemtablefilter-cannot-be-overwritten-at-runtime",
+        "every-non-aggregated-query-column-is-a-group-key",
+        "query-dataitems-default-to-left-outer-join",
         "reopening-query-resets-cursor-but-keeps-filters",
         "set-query-filters-before-open",
         "setfilter-overwrites-query-columnfilter"
@@ -115,6 +143,7 @@
         "currreport-break-ends-the-current-trigger",
         "currreport-quit-rolls-back-and-skips-onpostreport",
         "currreport-skip-does-not-stop-trigger-code",
+        "declare-report-layouts-in-the-rendering-section",
         "report-output-in-a-loop-needs-one-client-download",
         "reportextension-dataitem-trigger-order-is-explicit",
         "reportextension-report-triggers-run-after-base-triggers",
@@ -140,7 +169,9 @@
       "articles": [
         "al-has-no-built-in-htmlencode",
         "do-not-concatenate-external-text-into-setfilter",
-        "exposed-objects-must-be-in-a-permission-set"
+        "exposed-objects-must-be-in-a-permission-set",
+        "page-scope-filters-must-not-be-in-filtergroup-zero",
+        "restore-the-filtergroup-after-setting-hidden-filters"
       ]
     },
     "style": {
@@ -149,7 +180,8 @@
         "dateformula-evaluate-needs-language-independent-literals",
         "al-comments-must-not-restate-what-code-already-shows",
         "pages-must-not-contain-business-logic",
-        "mutating-procedure-for-a-page-caller-takes-var-record"
+        "mutating-procedure-for-a-page-caller-takes-var-record",
+        "build-client-links-with-geturl"
       ]
     },
     "telemetry": {
@@ -198,6 +230,7 @@
         "check-json-null-before-converting-values",
         "format-exchanged-values-with-standard-format-9",
         "api-page-least-privilege-write-access",
+        "set-text-encoding-on-streams-exchanged-externally",
         "describe-api-pages-for-mcp-with-abouttext"
       ],
       "articleOverrides": {
