@@ -3,6 +3,7 @@ import copy
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -20,8 +21,8 @@ class KnowledgeSemantics(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
-        (self.root / "schemas").mkdir()
+        self.root = Path(self.temp.name) / "corpus"
+        (self.root / "schemas").mkdir(parents=True)
         (self.root / "schemas/knowledge-response.schema.json").write_bytes((REPO / "schemas/knowledge-response.schema.json").read_bytes())
         self.path = "microsoft/knowledge/performance/example.md"
         self.article = self.root / self.path
@@ -38,6 +39,111 @@ class KnowledgeSemantics(unittest.TestCase):
     def errors(self, evidence=True):
         return module.validate_response(self.response, question=self.question, root=self.root,
             evidence=self.evidence if evidence else None, run_id="test-run")
+
+    def link_directory(self, link, target):
+        link.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            link.symlink_to(target, target_is_directory=True)
+        except OSError:
+            if os.name != "nt":
+                raise
+            # NTFS junctions exercise the same resolved-path identity contract
+            # without requiring Windows file-symlink privileges.
+            quote = lambda value: "'" + str(value).replace("'", "''") + "'"
+            command = "$ErrorActionPreference = 'Stop'; New-Item -ItemType Junction -Path "
+            command += quote(link) + " -Target " + quote(target) + " | Out-Null"
+            result = subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", command],
+                capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.addCleanup(lambda: link.unlink() if link.is_symlink() else link.rmdir())
+
+    def alias_payload(self, claimed, kind):
+        response = copy.deepcopy(self.response)
+        evidence = copy.deepcopy(self.evidence)
+        if kind == "reference":
+            response["references"][0]["path"] = claimed
+            content = (self.root / claimed).read_bytes()
+            evidence["reads"] = [{"path": claimed, "complete": True, "bytes": len(content),
+                                  "sha256": hashlib.sha256(content).hexdigest()}]
+        else:
+            response.update(outcome="no-knowledge", references=[],
+                            suppressed=[{"path": claimed, "reason": kind}])
+        return response, evidence
+
+    def validate_cli(self, response, evidence, root):
+        response_file = Path(self.temp.name) / "response.json"
+        question_file = Path(self.temp.name) / "question.txt"
+        evidence_file = Path(self.temp.name) / "reads.json"
+        response_file.write_text(json.dumps(response), encoding="utf-8")
+        question_file.write_bytes(self.question.encode("utf-8"))
+        evidence_file.write_text(json.dumps(evidence), encoding="utf-8")
+        return subprocess.run([sys.executable, str(TOOL), str(response_file), "--root", str(root),
+            "--question-file", str(question_file), "--read-evidence", str(evidence_file),
+            "--run-id", "test-run", "--enabled-layers", "microsoft"], capture_output=True, text=True)
+
+    def test_corpus_aliases_cannot_change_claimed_identity(self):
+        for label, directory in (("cross-layer", "custom/knowledge/performance"),
+                                 ("nonknowledge", "docs"),
+                                 ("same-layer", "microsoft/knowledge/other")):
+            target = self.root / directory
+            target.mkdir(parents=True, exist_ok=True)
+            (target / "target.md").write_bytes(b"# Alias target\n")
+            self.link_directory(self.root / "microsoft/knowledge" / label, target)
+            claimed = f"microsoft/knowledge/{label}/target.md"
+            for kind in ("reference", "layer-precedence", "configuration"):
+                with self.subTest(alias=label, kind=kind):
+                    response, evidence = self.alias_payload(claimed, kind)
+                    errors = module.validate_response(response, question=self.question, root=self.root,
+                        evidence=evidence, run_id="test-run", enabled_layers=["microsoft"])
+                    self.assertEqual(len(errors), 1, errors)
+                    self.assertIn(claimed, errors[0])
+
+    def test_alias_outside_corpus_is_rejected(self):
+        target = Path(self.temp.name) / "outside"
+        target.mkdir()
+        (target / "target.md").write_bytes(b"# Outside the corpus\n")
+        self.link_directory(self.root / "microsoft/knowledge/outside", target)
+        claimed = "microsoft/knowledge/outside/target.md"
+        for kind in ("reference", "layer-precedence", "configuration"):
+            with self.subTest(kind=kind):
+                response, evidence = self.alias_payload(claimed, kind)
+                errors = module.validate_response(response, question=self.question, root=self.root,
+                    evidence=evidence, run_id="test-run", enabled_layers=["microsoft"])
+                self.assertEqual(len(errors), 1, errors)
+
+    def test_relative_and_aliased_roots_keep_canonical_articles(self):
+        alias = Path(self.temp.name) / "consumer-root"
+        self.link_directory(alias, self.root)
+        previous_cwd = Path.cwd()
+        try:
+            os.chdir(self.temp.name)
+            for root in (self.root, Path("corpus"), alias, Path("consumer-root")):
+                for kind in ("reference", "layer-precedence", "configuration"):
+                    with self.subTest(root=str(root), kind=kind):
+                        response, evidence = self.alias_payload(self.path, kind)
+                        errors = module.validate_response(response, question=self.question, root=root,
+                            evidence=evidence, run_id="test-run", enabled_layers=["microsoft"])
+                        self.assertEqual(errors, [])
+        finally:
+            os.chdir(previous_cwd)
+
+    def test_cli_rejects_corpus_aliases_and_accepts_aliased_root(self):
+        for label, directory in (("cross-layer", "custom/knowledge/performance"), ("nonknowledge", "docs")):
+            with self.subTest(alias=label):
+                target = self.root / directory
+                target.mkdir(parents=True, exist_ok=True)
+                (target / "target.md").write_bytes(b"# Alias target\n")
+                self.link_directory(self.root / "microsoft/knowledge" / label, target)
+                claimed = f"microsoft/knowledge/{label}/target.md"
+                response, evidence = self.alias_payload(claimed, "reference")
+                result = self.validate_cli(response, evidence, self.root)
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertFalse(json.loads(result.stdout)["valid"])
+        alias = Path(self.temp.name) / "consumer-root"
+        self.link_directory(alias, self.root)
+        result = self.validate_cli(self.response, self.evidence, alias)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue(json.loads(result.stdout)["valid"])
 
     def test_disabled_citation_layer(self):
         errors = module.validate_response(self.response, question=self.question, root=self.root,

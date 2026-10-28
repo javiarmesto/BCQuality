@@ -105,6 +105,14 @@ A `suppressed` entry with reason `configuration` may identify an existing
 article in a disabled layer; it is an exclusion record, never supporting evidence.
 All these paths must be canonical existing corpus files.
 
+The consumer root may be relative or accessed through an alias; it is resolved
+before validating corpus paths. For both references and suppressions, the
+resolved file's root-relative path must exactly match the claimed path. An
+internal symlink or junction that changes that identity is rejected, including
+aliases to another layer, a different article, or a nonknowledge file inside the
+checkout. The `configuration` exception permits canonical disabled-layer paths,
+not aliases that misidentify their destination.
+
 ## Regression tests
 
 ```powershell

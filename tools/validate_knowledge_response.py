@@ -35,6 +35,8 @@ def validate_response(response, *, question, root, evidence=None, run_id, enable
         file = (root / name).resolve()
         if "\\" in name or any(part in ("", ".", "..") for part in parts) or not file.is_relative_to(root):
             errors.append(f"Noncanonical corpus path: {name}")
+        elif file.relative_to(root).as_posix() != name:
+            errors.append(f"Corpus identity differs from the claimed path: {name}")
         elif not file.is_file():
             errors.append(f"Corpus path does not exist: {name}")
         else:
