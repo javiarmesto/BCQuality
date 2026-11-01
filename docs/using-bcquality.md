@@ -12,21 +12,21 @@ and rendering; BCQuality does not install a BC extension or an agent.
 | Path | What to do |
 | --- | --- |
 | Read the knowledge yourself | Browse [knowledge by domain](#knowledge-by-domain), or search the repository for an AL concept. Read the article and its samples. No installation required. |
-| Use a supplied skill | Follow the [plugin quick start](../README.md#quick-start). This fork exposes `al-code-review` for findings and `al-knowledge` for cited guidance. |
+| Use a supplied skill | Follow the [plugin quick start](../README.md#quick-start). `al-code-review` reviews code and returns findings; the preview `al-plan-guidance` enriches an existing development plan before coding. |
 | Use your own agent or workflow | Supply selected articles as context, as described below, or use the [integration bootstrap](agent-consumption.md#try-a-minimal-integration) to execute BCQuality action skills without the plugin. |
+| Get guidance before coding (preview) | Ask the plugin's `al-plan-guidance` skill to enrich an existing plan, then review the finished change. See [plan guidance](../README.md#preview-guidance-before-implementation). |
 
-### Knowledge consultation in this fork
+### Knowledge consultation
 
-The `al-knowledge` plugin skill answers a focused development question from
-articles it actually read, returning a `knowledge-response` with exact paths.
-Ask, for example, "Use `al-knowledge` to explain when `SetLoadFields` is useful
-for AL on BC 29; cite your BCQuality articles; do not review code." It requires
-no app folder. It follows the same thin adapter → Entry → layered action skill
-sequence as `al-code-review` and does not turn advice into review findings.
+Use `al-knowledge` to support design and specification with guidance from the
+articles the agent actually reads. A question needs no app folder, file or diff.
+The response contains the exact question, cited guidance and applicability
+conditions. See [knowledge consultation](knowledge-consultation.md) for the
+request path, prerequisites and validation.
 
-The [ALDC integration diagrams](aldc-integration/README.md) distinguish
-ALDC's existing multiroot design read path from this fork's proposed plugin
-knowledge path. Installing this fork does not automatically update ALDC.
+The [ALDC integration diagrams](aldc-integration/README.md) distinguish ALDC's
+existing multiroot design read path from the plugin knowledge path. Installing
+the plugin does not automatically update ALDC.
 
 ### Read and reuse an article
 
@@ -70,12 +70,12 @@ integration protocol. The remaining sections describe the review workflow.
 The [quick start](../README.md#quick-start) documents GitHub Copilot CLI. Use a
 current CLI release with plugin support and sign in to an account allowed to
 use it. In an interactive CLI session, `/skills list` should include
-`al-code-review` and `al-knowledge`; in the terminal, `copilot plugin list` should include
-`bcquality`.
+`al-code-review` and `al-plan-guidance`; in the terminal, `copilot plugin list`
+should include `bcquality`.
 
 Do not assume a CLI installation also installs the plugin into VS Code,
 another editor, or another agent host. Follow that host's plugin instructions
-and confirm it discovers `skills/al-code-review/SKILL.md`. Hosts without
+and confirm it discovers the skills under `skills/*/SKILL.md`. Hosts without
 compatible plugin discovery need an [integration](agent-consumption.md).
 
 Source review needs access to your files, not a running BC environment.
@@ -98,7 +98,9 @@ branch names with ones in your project.
 | Uncommitted changes | Use the installed al-code-review skill to review my staged and unstaged tracked changes against HEAD, without changing files. Identify any untracked AL files not included in that diff. |
 | Branch changes | Use the installed al-code-review skill to review changes on this branch since its merge base with `origin/main`. Exclude uncommitted changes and do not edit files. |
 | Focused review | Use the installed al-code-review skill to review performance in the app in this folder, without changing files. Return the complete performance findings report. |
+| Supply chain code | Use the installed al-code-review skill to review SCM posting, inventory, reservations, item tracking, and warehouse workflows in this app folder, without changing files. Return the complete Supply Chain Management findings report. |
 | Agent SDK code | Use the installed al-code-review skill to review Agent SDK implementation and usage in this app folder, without changing files. Return the complete Agents findings report. |
+| Copilot features | Use the installed al-code-review skill to review the Copilot features (AI module calls, Copilot capabilities, PromptDialog pages) in this app folder, without changing files. Return the complete Copilot findings report. |
 
 For Git comparisons, the named base ref must exist locally. If it is missing,
 fetch the intended branch first. A PR review also requires the host to have
@@ -196,18 +198,28 @@ using your normal compilation, analyzer, test, and human-review workflow.
 
 ## Coverage and limits
 
-The Microsoft broad review composes the 17 Microsoft domains listed below.
-The Community Agents review is a separate skill selected by the request, not
+The Microsoft broad review composes the Microsoft domains listed below.
+The Community Agents and Copilot reviews are separate skills selected by the request, not
 a nested part of that coordinator. All current review leaves accept app
-folders, files, and diffs; request an Agent SDK review explicitly when that
+folders, files, and diffs; request an Agent SDK or Copilot review explicitly when that
 coverage matters and look for its separate report.
 
 Available knowledge is **not** a promise that every rule will run. Selection
 depends on the task, target context, enabled layers, and source evidence.
 A whole-folder review is a current-state snapshot: detecting a published API
 removal or another comparison-only regression requires an actual baseline.
-The corpus is technical AL guidance, not exhaustive functional validation or
-AppSource certification.
+The corpus combines technical AL guidance with targeted functional-domain
+invariants, not exhaustive functional validation or AppSource certification.
+
+The functional domains are deliberately focused. **Supply Chain Management**
+reviews selected inventory and costing, item application, reservation,
+tracking, and warehouse/posting workflows. **Finance** reviews selected
+journal posting, financial ledger, application, VAT, and posting-dimension
+workflows. Each runs only when the code in scope touches those records or
+operations; a module name or broad `ApplicationArea` alone is not enough.
+Manufacturing, assembly, planning, and other areas are covered only where an
+article explicitly names the shared interface. Request a focused review, such
+as "Finance posting review", when only one domain is needed.
 
 BCQuality intentionally does not duplicate mechanical diagnostics already
 enforced by the AL compiler or standard analyzers. Run the consuming app's
@@ -223,11 +235,13 @@ Each article describes one concern. Where samples exist, use its linked
 | Domain | Browse knowledge |
 | --- | --- |
 | Agent SDK | [Agents (Community)](../community/knowledge/agents/) |
+| Copilot features (System.AI) | [Copilot (Community)](../community/knowledge/copilot/) |
 | AppSource | [AppSource](../microsoft/knowledge/appsource/) |
 | Compatibility | [Breaking changes](../microsoft/knowledge/breaking-changes/) |
 | Data modeling | [Data modeling](../microsoft/knowledge/data-modeling/) |
 | Error handling | [Error handling](../microsoft/knowledge/error-handling/) |
 | Events | [Events](../microsoft/knowledge/events/) |
+| Finance | [Finance](../microsoft/knowledge/finance/) |
 | Interfaces | [Interfaces](../microsoft/knowledge/interfaces/) |
 | Performance | [Performance](../microsoft/knowledge/performance/) |
 | Privacy | [Privacy](../microsoft/knowledge/privacy/) |
@@ -235,6 +249,7 @@ Each article describes one concern. Where samples exist, use its linked
 | Reporting | [Reporting](../microsoft/knowledge/reporting/) |
 | Security | [Security](../microsoft/knowledge/security/) |
 | Style | [Style](../microsoft/knowledge/style/) |
+| Supply Chain Management | [SCM](../microsoft/knowledge/scm/) |
 | Telemetry | [Telemetry](../microsoft/knowledge/telemetry/) |
 | Testing | [Testing](../microsoft/knowledge/testing/) |
 | User interface | [UI](../microsoft/knowledge/ui/) |

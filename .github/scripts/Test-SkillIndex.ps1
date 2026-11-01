@@ -30,9 +30,11 @@ function Assert-ThrowsLike {
 }
 
 $generator = Join-Path $Root 'tools/Build-SkillIndex.ps1'
+$resolver = Join-Path $Root 'tools/Resolve-SkillWorklist.ps1'
 $indexSchema = Join-Path $Root 'schemas/skill-index.schema.json'
 $reportSchema = Join-Path $Root 'schemas/findings-report.schema.json'
-foreach ($path in $generator, $indexSchema, $reportSchema) {
+$guidanceReportSchema = Join-Path $Root 'schemas/development-guidance-report.schema.json'
+foreach ($path in $generator, $resolver, $indexSchema, $reportSchema, $guidanceReportSchema) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "Required contract file not found: $path"
     }
@@ -93,7 +95,9 @@ try {
         'microsoft/skills/review/al-query-review.md',
         'microsoft/skills/review/al-reporting-review.md',
         'microsoft/skills/review/al-appsource-review.md',
-        'microsoft/skills/review/al-telemetry-review.md'
+        'microsoft/skills/review/al-telemetry-review.md',
+        'microsoft/skills/review/al-scm-review.md',
+        'microsoft/skills/review/al-finance-review.md'
     )
     $review = @($skills | Where-Object id -eq 'al-code-review')
     $knowledge = @($skills | Where-Object id -eq 'al-knowledge')
@@ -105,17 +109,87 @@ try {
     if ($knowledgeCandidates.Count -ne 1 -or $knowledgeCandidates[0].id -ne 'al-knowledge') {
         throw 'A knowledge-only request must exclude review actions.'
     }
+    # Entry applies READ's non-empty technology intersection to indexed actions.
+    $alKnowledge = @($knowledgeCandidates | Where-Object { 'al' -in $_.filters.technologies })
+    if ($alKnowledge.Count -ne 1 -or $alKnowledge[0].id -ne 'al-knowledge') {
+        throw 'Entry must admit knowledge-query with technologies: [al].'
+    }
+    foreach ($dimension in 'bc-version', 'countries', 'application-area') {
+        $expected = if ($dimension -eq 'countries') { 'w1' } else { 'all' }
+        if ($expected -notin $knowledge[0].filters.$dimension) {
+            throw "Missing knowledge action applicability: $dimension"
+        }
+    }
+    $reviewCandidates = @($skills | Where-Object { 'file-path' -in $_.inputs -and 'al' -in $_.filters.technologies })
+    if ('al-code-review' -notin $reviewCandidates.id -or 'al-knowledge' -in $reviewCandidates.id) {
+        throw 'AL file input must admit code review and exclude knowledge consultation.'
+    }
     if ($review.Count -ne 1) {
         throw "Expected exactly one al-code-review record, found $($review.Count)."
     }
     if ((@($review[0].subSkills) -join "`n") -cne ($expectedLeaves -join "`n")) {
-        throw 'al-code-review subSkills did not preserve the declared 17-leaf order.'
+        throw "al-code-review subSkills did not preserve the declared $($expectedLeaves.Count)-leaf order."
     }
     foreach ($leafPath in $expectedLeaves) {
         $leaf = @($skills | Where-Object path -ceq $leafPath)
         if ($leaf.Count -ne 1 -or @($leaf[0].subSkills).Count -ne 0) {
             throw "Expected '$leafPath' to resolve to exactly one leaf action skill."
         }
+    }
+
+    $guidance = @($skills | Where-Object id -eq 'al-development-plan')
+    if ($guidance.Count -ne 1) {
+        throw "Expected exactly one al-development-plan record, found $($guidance.Count)."
+    }
+    if ((@($guidance[0].inputs) -join "`n") -cne ("development-plan`nrepository")) {
+        throw 'al-development-plan inputs were not indexed in declared order.'
+    }
+    if ((@($guidance[0].outputs) -join "`n") -cne 'development-guidance-report') {
+        throw 'al-development-plan output kind was not preserved in the skill index.'
+    }
+    if (@($guidance[0].subSkills).Count) {
+        throw 'al-development-plan must remain a leaf action skill.'
+    }
+
+    $minimalGuidanceReport = @{
+        skill = @{ id = 'al-development-plan'; version = 1 }
+        outcome = 'completed'
+        summary = @{
+            request = 'Enrich the existing plan.'
+            kind = 'feature'
+            candidates = 1
+            selected = 1
+        }
+        context = @{
+            'bc-version' = '28'
+            technologies = @('al')
+            countries = @('w1')
+            'application-area' = @('all')
+            unknown = @()
+        }
+        knowledge = @(@{
+            path = 'microsoft/knowledge/performance/apply-filters-before-iterating.md'
+            'used-for' = 'Constrain filtered iteration.'
+            constraints = @('Apply filters before iterating.')
+            'sample-paths' = @()
+        })
+        'validation-considerations' = @()
+        suppressed = @()
+        unresolved = @()
+    } | ConvertTo-Json -Depth 10
+    if (-not ($minimalGuidanceReport | Test-Json -SchemaFile $guidanceReportSchema -ErrorAction Stop)) {
+        throw 'Minimal development-guidance report does not satisfy schemas/development-guidance-report.schema.json.'
+    }
+
+    $failedGuidanceReport = $minimalGuidanceReport | ConvertFrom-Json
+    $failedGuidanceReport.outcome = 'failed'
+    $failedGuidanceReport | Add-Member -NotePropertyName 'outcome-reason' -NotePropertyValue 'Retrieval failed.'
+    if (($failedGuidanceReport | ConvertTo-Json -Depth 10) | Test-Json -SchemaFile $guidanceReportSchema -ErrorAction SilentlyContinue) {
+        throw 'A failed development-guidance report with knowledge must not satisfy its JSON schema.'
+    }
+    $failedGuidanceReport.knowledge = @()
+    if (-not (($failedGuidanceReport | ConvertTo-Json -Depth 10) | Test-Json -SchemaFile $guidanceReportSchema -ErrorAction Stop)) {
+        throw 'A failed development-guidance report with empty knowledge must satisfy its JSON schema.'
     }
 
     $minimalReport = @{
@@ -242,9 +316,83 @@ Output.
     Assert-ThrowsLike -Pattern '*Nested super-skills are not supported*' -Action {
         & $generator -BCQualityRoot $fixtureRoot -IndexPath (Join-Path $tmp 'nested.json')
     }
+
+    Remove-Item -LiteralPath (Join-Path $fixtureSkills 'al-nested-review.md') -Force
+    $validSuper = @'
+---
+kind: action-skill
+id: al-code-review
+version: 1
+title: Review
+description: Test super-skill.
+inputs: [file-path]
+outputs: [findings-report]
+sub-skills:
+  - microsoft/skills/review/al-leaf-review.md
+---
+
+# Review
+
+## Source
+Source.
+## Relevance
+Relevance.
+## Worklist
+Worklist.
+## Action
+Action.
+## Output
+Output.
+'@
+    Set-Content -LiteralPath $superPath -Value $validSuper -Encoding utf8NoBOM
+
+    $customSkills = Join-Path -Path $fixtureRoot -ChildPath 'custom/skills/review'
+    New-Item -ItemType Directory -Path $customSkills -Force | Out-Null
+    $customLeaf = $leaf.Replace('title: Leaf', 'title: Custom Leaf')
+    Set-Content -LiteralPath (Join-Path $customSkills 'custom-leaf-review.md') -Value $customLeaf -Encoding utf8NoBOM
+
+    $layeredPath = Join-Path $tmp 'layered.json'
+    & $generator -BCQualityRoot $fixtureRoot -IndexPath $layeredPath | Out-Null
+    $layeredIndex = Get-Content -LiteralPath $layeredPath -Raw | ConvertFrom-Json
+    $layeredLeaves = @($layeredIndex.skills | Where-Object id -eq 'al-leaf-review')
+    if ($layeredLeaves.Count -ne 2) {
+        throw "Expected both layered al-leaf-review implementations, found $($layeredLeaves.Count)."
+    }
+    if ((@($layeredLeaves.layer | Sort-Object) -join ',') -cne 'custom,microsoft') {
+        throw 'Layered al-leaf-review implementations did not preserve custom and microsoft records.'
+    }
+
+    $resolved = & $resolver -BCQualityRoot $fixtureRoot -IndexPath $layeredPath -SuperSkillPath (
+        'microsoft/skills/review/al-code-review.md'
+    )
+    if ($resolved.subSkills.Count -ne 1 -or
+        $resolved.subSkills[0].path -cne 'custom/skills/review/custom-leaf-review.md') {
+        throw 'The custom implementation did not win the layered leaf slot.'
+    }
+
+    $microsoftOnly = & $resolver -BCQualityRoot $fixtureRoot -IndexPath $layeredPath -SuperSkillPath (
+        'microsoft/skills/review/al-code-review.md'
+    ) -EnabledLayers microsoft
+    if ($microsoftOnly.subSkills.Count -ne 1 -or
+        $microsoftOnly.subSkills[0].path -cne 'microsoft/skills/review/al-leaf-review.md') {
+        throw 'Disabling the custom layer did not fall back to the Microsoft implementation.'
+    }
+
+    $customDisabled = & $resolver -BCQualityRoot $fixtureRoot -IndexPath $layeredPath -SuperSkillPath (
+        'microsoft/skills/review/al-code-review.md'
+    ) -DisabledSkills 'custom/skills/review/custom-leaf-review.md'
+    if ($customDisabled.subSkills.Count -ne 1 -or
+        $customDisabled.subSkills[0].path -cne 'microsoft/skills/review/al-leaf-review.md') {
+        throw 'Disabling the custom implementation did not fall back to Microsoft.'
+    }
+
+    Set-Content -LiteralPath (Join-Path $customSkills 'duplicate-leaf-review.md') -Value $customLeaf -Encoding utf8NoBOM
+    Assert-ThrowsLike -Pattern '*Duplicate action-skill IDs within a layer: custom:al-leaf-review*' -Action {
+        & $generator -BCQualityRoot $fixtureRoot -IndexPath (Join-Path $tmp 'duplicate-layer.json')
+    }
 }
 finally {
     Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-Write-Output 'Skill-index check PASSED: deterministic, schema-valid, and all 17 review leaves preserved in order.'
+Write-Output "Skill-index check PASSED: deterministic, schema-valid, layered overrides resolved, and all $($expectedLeaves.Count) review leaves preserved in order."

@@ -44,6 +44,15 @@ Otherwise the layers are additive. A matching filename alone does not suppress
 an article; the [READ contract](../skills/read.md#layer-precedence) governs
 knowledge conflicts. Review reports record displaced knowledge in `suppressed`.
 
+Action skills use the same layer order but override by frontmatter `id`. A
+custom leaf with the same `id` as a Community or Microsoft leaf replaces that
+leaf in every super-skill slot while its layer is enabled. The files may have
+different names. IDs must remain unique within each layer. Disabling the custom
+layer or the custom skill path makes composition fall back to the next enabled
+implementation. Hosts should build the skill index and use
+`tools/Resolve-SkillWorklist.ps1`; they must not implement this selection from
+filenames.
+
 Layer selection is **not an access-control boundary**. A plugin installation
 still contains excluded layers on disk. An integration requiring genuine
 exclusion must remove denied files from its own content copy before the agent
@@ -149,8 +158,8 @@ than the upstream URL. It must still start at [Entry](../skills/entry.md).
 
 | Identifier | What it identifies |
 | --- | --- |
-| Plugin `version` in `plugin.json` | The host-facing package version. It is separate from content-release tags. `copilot plugin list` shows the installed plugin; inspect the resolved source when reproducing a run. |
-| Content tag such as `v1.6` | A release of the repository's knowledge and skills. Available tags are listed on [GitHub](https://github.com/microsoft/BCQuality/tags). |
+| Plugin `version` in `plugin.json` | The host-facing package version shown by `copilot plugin list`. At a content-release tag it is `major.minor.0`; for example, tag `v1.8` carries plugin version `1.8.0`. An unpinned installation from `main` can contain changes before or after that release, so record the commit when reproducing a run. |
+| Content tag such as `v1.8` | A release of the repository's knowledge and skills. Available tags are listed on [GitHub](https://github.com/microsoft/BCQuality/tags). |
 | Skill `version` in frontmatter | That skill's contract version, carried in reports. It does not identify the complete knowledge snapshot. |
 | Git commit SHA | The exact repository snapshot. Record this for reproducibility when using a checkout. |
 

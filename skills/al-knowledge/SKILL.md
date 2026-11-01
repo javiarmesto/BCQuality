@@ -5,8 +5,14 @@ description: Answer Business Central development questions from BCQuality's inst
 
 # AL knowledge consultation
 
-This is a thin host-native adapter. Routing, article selection, precedence, and
-output policy belong to Entry, READ, DO, and the dispatched action skill.
+This is the public skill entry point: the file the host agent reads to start
+the skill. It tells the agent how to prepare the question and follow
+BCQuality's routing instructions. The same agent can execute all steps
+inline; no separate program or agent is required.
+
+This file is distinct from `skills/entry.md`, which owns routing. Article
+selection, precedence, and output policy belong to Entry, READ, DO, and the
+dispatched internal action skill.
 
 ## Execute
 
@@ -26,8 +32,16 @@ output policy belong to Entry, READ, DO, and the dispatched action skill.
    Read `PLUGIN_ROOT/skills/read.md` and `PLUGIN_ROOT/skills/do.md` on demand.
    Do not call `al-code-review` for this knowledge question, synthesize a
    dispatch, or turn an explanation into a finding.
-5. Return the action skill's `knowledge-response` unchanged, or Entry's
-   `no-match` / `failed` dispatch record unchanged.
+5. Validate the action skill's `knowledge-response` under DO before accepting
+   it: check the schema, exact bound question, and current-run full reads of
+   every cited path. The consumer can use
+   `PLUGIN_ROOT/tools/validate_knowledge_response.py` with its own question
+   and read evidence. Preserve the raw result when validation fails; record
+   that failure separately instead of repairing or accepting the answer.
+   Inline checks by the answering agent are self-attestation, not independent
+   verification. Independent checks require a trusted consumer read collector.
+   Return a valid response unchanged, or Entry's `no-match` / `failed`
+   dispatch record unchanged.
 
 Where the host has no tool to invoke a skill and skills are instruction files the
 agent reads (for example VS Code Copilot), invoking this skill means executing
